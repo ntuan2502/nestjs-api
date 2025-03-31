@@ -13,11 +13,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Office {
+  id        Int       @id @default(autoincrement())
+  name      String
+  address   String
+  users     User[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft delete
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
   password  String
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  officeId  Int?
+  office    Office?   @relation(fields: [officeId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft delete
 }

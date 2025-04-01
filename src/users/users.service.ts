@@ -5,27 +5,55 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {}
 
-  async create(data: CreateUserDto) {
-    return this.prisma.user.create({ data });
+  create(createUserDto: CreateUserDto) {
+    return this.prisma.user.create({
+      data: createUserDto,
+    });
   }
 
-  async findAll() {
-    return this.prisma.user.findMany();
+  findAll() {
+    return this.prisma.user.findMany({
+      where: { deletedAt: null },
+      include: { office: true },
+    });
   }
 
   async findOne(id: number) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
+    const user = await this.prisma.user.findUnique({
+      where: { id, deletedAt: null },
+      include: { office: true },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
     return user;
   }
 
-  async update(id: number, data: UpdateUserDto) {
-    return this.prisma.user.update({ where: { id }, data });
+  async update(id: number, updateUserDto: UpdateUserDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id, deletedAt: null },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    return this.prisma.user.update({
+      where: { id },
+      data: updateUserDto,
+    });
   }
 
   async remove(id: number) {
-    return this.prisma.user.delete({ where: { id } });
+    const user = await this.prisma.user.findUnique({
+      where: { id, deletedAt: null },
+    });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    return this.prisma.user.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
   }
 }

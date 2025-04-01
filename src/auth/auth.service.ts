@@ -68,6 +68,29 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
+  async logoutSession(userId: number, sessionId: number) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new UnauthorizedException('Session not found');
+    }
+    if (session.userId !== userId) {
+      throw new UnauthorizedException('You can only logout your own sessions');
+    }
+    if (!session.isActive) {
+      throw new UnauthorizedException('Session already logged out');
+    }
+
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { isActive: false },
+    });
+
+    return { message: `Session ${sessionId} logged out successfully` };
+  }
+
   // Lấy danh sách phiên của user
   async getUserSessions(userId: number) {
     return this.prisma.session.findMany({

@@ -6,6 +6,8 @@ import {
   Req,
   UseGuards,
   UnauthorizedException,
+  ParseIntPipe,
+  Param,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -41,5 +43,15 @@ export class AuthController {
   getSessions(@Req() req: AuthRequest) {
     const userId = req.user.sub; // Lấy userId từ JWT payload
     return this.authService.getUserSessions(userId);
+  }
+
+  @Post('sessions/:id/logout')
+  @UseGuards(JwtAuthGuard)
+  logoutSession(
+    @Req() req: AuthRequest,
+    @Param('id', ParseIntPipe) sessionId: number,
+  ) {
+    const userId = req.user.sub;
+    return this.authService.logoutSession(userId, sessionId);
   }
 }

@@ -25,19 +25,27 @@ export class UsersService {
 
     // Hash mật khẩu và tạo user
     const hashedPassword = await bcrypt.hash(password, 10);
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         ...rest,
         email,
         password: hashedPassword,
       },
     });
+    // Loại bỏ password khỏi response
+    const { password: _password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
 
-  findAll() {
-    return this.prisma.user.findMany({
+  async findAll() {
+    const users = await this.prisma.user.findMany({
       where: { deletedAt: null },
       include: { office: true },
+    });
+    // Loại bỏ password khỏi response, dùng _password để tránh lỗi ESLint
+    return users.map((user) => {
+      const { password: _password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
     });
   }
 
@@ -52,7 +60,9 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-    return user;
+    // Loại bỏ password khỏi response, dùng _password để tránh lỗi ESLint
+    const { password: _password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {

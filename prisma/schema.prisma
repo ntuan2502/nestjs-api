@@ -13,24 +13,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Office {
-  id        Int       @id @default(autoincrement())
-  name      String
-  address   String
-  users     User[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime? // Soft delete
-}
-
 model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
   password  String
   name      String
   officeId  Int?
-  office    Office?   @relation(fields: [officeId], references: [id])
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  deletedAt DateTime? // Soft delete
+  deletedAt DateTime?
+  office    Office?   @relation(fields: [officeId], references: [id])
+  sessions  Session[] // Quan hệ với bảng sessions
+}
+
+model Session {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  token      String   @unique // Lưu access_token
+  isActive   Boolean  @default(true) // Trạng thái phiên
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Office {
+  id        Int       @id @default(autoincrement())
+  name      String
+  address   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  users     User[]
 }

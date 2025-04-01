@@ -8,7 +8,7 @@ import { JwtStrategy } from './jwt.strategy';
   imports: [
     JwtModule.register({
       secret: process.env.SECRET || 'your-secret-key',
-      signOptions: { expiresIn: '1h' }, // Token hết hạn sau 1 giờ
+      signOptions: { expiresIn: process.env.EXPIRES_IN || '1h' }, // Token hết hạn sau 1 giờ
     }),
   ],
   controllers: [AuthController],

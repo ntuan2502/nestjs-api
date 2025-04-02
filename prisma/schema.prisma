@@ -23,17 +23,18 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   office    Office?   @relation(fields: [officeId], references: [id])
-  sessions  Session[] // Quan hệ với bảng sessions
+  sessions  Session[]
 }
 
 model Session {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  token      String   @unique // Lưu access_token
-  isActive   Boolean  @default(true) // Trạng thái phiên
-  createdAt  DateTime @default(now())
-  lastUsedAt DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id])
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  token        String   @unique // Access token
+  refreshToken String?  @unique // Refresh token (có thể null)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model Office {

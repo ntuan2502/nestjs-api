@@ -7,9 +7,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { PrismaService } from '../prisma/prisma.service';
 import { Request } from 'express';
 
-// Định nghĩa interface cho request với user từ JWT (tái sử dụng từ AuthController)
 interface AuthRequest extends Request {
-  user: { sub: number; email: string }; // Dựa trên validate trong JwtStrategy
+  user: { sub: number; email: string };
 }
 
 @Injectable()
@@ -24,15 +23,18 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
     const request: AuthRequest = context.switchToHttp().getRequest();
     const token = request.headers.authorization?.split(' ')[1];
+    if (!token) {
+      throw new UnauthorizedException('No token provided');
+    }
+
     const session = await this.prisma.session.findUnique({
-      where: { token },
+      where: { token }, // Kiểm tra access token
     });
 
     if (!session || !session.isActive) {
       throw new UnauthorizedException('Session is invalid or logged out');
     }
 
-    // Cập nhật lastUsedAt để theo dõi hoạt động
     await this.prisma.session.update({
       where: { token },
       data: { lastUsedAt: new Date() },

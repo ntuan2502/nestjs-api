@@ -131,6 +131,25 @@ export class AuthService {
     return { message: `Session ${sessionId} logged out successfully` };
   }
 
+  async logoutAllSessions(userId: number) {
+    const activeSessions = await this.prisma.session.findMany({
+      where: { userId, isActive: true },
+    });
+
+    if (activeSessions.length === 0) {
+      return { message: 'No active sessions to logout' };
+    }
+
+    await this.prisma.session.updateMany({
+      where: { userId, isActive: true },
+      data: { isActive: false },
+    });
+
+    return {
+      message: `Logged out ${activeSessions.length} session(s) successfully`,
+    };
+  }
+
   async getUserSessions(userId: number) {
     return this.prisma.session.findMany({
       where: { userId },

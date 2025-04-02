@@ -59,4 +59,11 @@ export class AuthController {
     const userId = req.user.sub;
     return this.authService.logoutSession(userId, sessionId);
   }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  logoutAllSessions(@Req() req: AuthRequest) {
+    const userId = req.user.sub;
+    return this.authService.logoutAllSessions(userId);
+  }
 }

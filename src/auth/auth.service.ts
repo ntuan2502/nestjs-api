@@ -30,9 +30,11 @@ export class AuthService {
     // Tạo access token và refresh token
     const payload = { sub: user.id, email: user.email };
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: process.env.EXPIRES_IN || '15m',
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || '15m',
     }); // Ngắn hạn: 15 phút
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' }); // Dài hạn: 7 ngày
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d',
+    }); // Dài hạn: 7 ngày
 
     // Lưu phiên vào DB
     await this.prisma.session.create({
@@ -77,7 +79,7 @@ export class AuthService {
     // Tạo access token mới
     const newAccessToken = this.jwtService.sign(
       { sub: payload.sub, email: payload.email },
-      { expiresIn: process.env.EXPIRES_IN || '15m' },
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || '15m' },
     );
 
     // Cập nhật access token trong session

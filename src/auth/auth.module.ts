@@ -3,12 +3,21 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt.strategy';
+import { PassportModule } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key',
-      signOptions: { expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || '15m' }, // Token hết hạn sau 15m
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtModule.registerAsync({
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
+        signOptions: {
+          expiresIn:
+            configService.get<string>('ACCESS_TOKEN_EXPIRES_IN') || '15m',
+        },
+      }),
+      inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],

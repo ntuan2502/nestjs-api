@@ -1,26 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config'; // Thêm ConfigService
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-// Định nghĩa interface cho payload của JWT
 interface JwtPayload {
   sub: number;
   email: string;
-  iat?: number; // Issued at (tùy chọn)
-  exp?: number; // Expires at (tùy chọn)
+  iat?: number;
+  exp?: number;
 }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(
+    @Inject(ConfigService) private readonly configService: ConfigService, // Inject ConfigService
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'your-secret-key', // Phải khớp với secret trong JwtModule
+      secretOrKey: configService.get<string>('JWT_SECRET') || 'your-secret-key',
     });
   }
 
-  // Bỏ async vì không cần await hiện tại
   validate(payload: JwtPayload) {
     return { sub: payload.sub, email: payload.email };
   }

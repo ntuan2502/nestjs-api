@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config'; // Thêm ConfigService
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
@@ -11,7 +11,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    @Inject(ConfigService) private readonly configService: ConfigService, // Inject ConfigService
+    @Inject(ConfigService) private readonly configService: ConfigService,
   ) {}
 
   async login(loginDto: LoginDto) {
@@ -30,17 +30,25 @@ export class AuthService {
     }
 
     const payload = { sub: user.id, email: user.email };
-    const accessToken = this.jwtService.sign(payload); // Dùng expiresIn từ JwtModule
+    const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, {
-      expiresIn:
-        this.configService.get<string>('REFRESH_TOKEN_EXPIRES_IN') || '7d',
+      expiresIn: this.configService.get<string>('REFRESH_TOKEN_LIFETIME', '7d'),
     });
+
+    const refreshTokenExpiresAt = new Date();
+    const lifetimeDays = this.parseLifetimeToDays(
+      this.configService.get<string>('REFRESH_TOKEN_LIFETIME', '7d'),
+    );
+    refreshTokenExpiresAt.setDate(
+      refreshTokenExpiresAt.getDate() + lifetimeDays,
+    );
 
     await this.prisma.session.create({
       data: {
         userId: user.id,
         token: accessToken,
         refreshToken,
+        refreshTokenExpiresAt,
         isActive: true,
       },
     });
@@ -66,6 +74,24 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
+    const now = new Date();
+    // Kiểm tra thời hạn tuyệt đối, xử lý trường hợp null
+    if (!session.refreshTokenExpiresAt) {
+      throw new UnauthorizedException('Refresh token expiration not set');
+    }
+    if (now > session.refreshTokenExpiresAt) {
+      throw new UnauthorizedException('Refresh token has expired');
+    }
+
+    // Kiểm tra cooldown (1 phút)
+    if (session.lastRefreshedAt) {
+      const timeSinceLastRefresh =
+        now.getTime() - session.lastRefreshedAt.getTime();
+      if (timeSinceLastRefresh < 1000 * 60) {
+        throw new UnauthorizedException('Refresh token used too frequently');
+      }
+    }
+
     let payload: { sub: number; email: string };
     try {
       payload = this.jwtService.verify(refreshToken);
@@ -78,14 +104,29 @@ export class AuthService {
       email: payload.email,
     });
 
+    // Tính thời gian còn lại cho newRefreshToken
+    const timeLeftMs = session.refreshTokenExpiresAt.getTime() - now.getTime();
+    if (timeLeftMs <= 0) {
+      throw new UnauthorizedException('Refresh token has expired');
+    }
+    const timeLeftSeconds = Math.floor(timeLeftMs / 1000);
+    const newRefreshToken = this.jwtService.sign(
+      { sub: payload.sub, email: payload.email },
+      { expiresIn: `${timeLeftSeconds}s` },
+    );
+
     await this.prisma.session.update({
       where: { refreshToken },
-      data: { token: newAccessToken },
+      data: {
+        token: newAccessToken,
+        refreshToken: newRefreshToken,
+        lastRefreshedAt: new Date(),
+      },
     });
 
     return {
       access_token: newAccessToken,
-      refresh_token: refreshToken,
+      refresh_token: newRefreshToken,
     };
   }
 
@@ -152,10 +193,29 @@ export class AuthService {
         id: true,
         token: true,
         refreshToken: true,
+        refreshTokenExpiresAt: true,
         isActive: true,
         createdAt: true,
         lastUsedAt: true,
+        lastRefreshedAt: true,
       },
     });
+  }
+
+  private parseLifetimeToDays(lifetime: string): number {
+    const match = lifetime.match(/^(\d+)([dhm])$/);
+    if (!match) return 7;
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+    switch (unit) {
+      case 'd':
+        return value;
+      case 'h':
+        return value / 24;
+      case 'm':
+        return value / (24 * 60);
+      default:
+        return 7;
+    }
   }
 }

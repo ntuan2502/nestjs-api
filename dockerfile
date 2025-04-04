@@ -1,10 +1,15 @@
+# Use Node.js 20 slim image as base
 FROM node:20-slim
 
-# Install curl and bun
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL https://bun.sh/install | bash
+# Install required dependencies including unzip
+RUN apt-get update && \
+    apt-get install -y curl unzip && \
+    rm -rf /var/lib/apt/lists/*
 
-# Ensure Bun is in PATH
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash
+
+# Set environment variables
 ENV PATH="/root/.bun/bin:${PATH}"
 
 # Set working directory

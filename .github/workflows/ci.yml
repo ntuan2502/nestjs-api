@@ -67,4 +67,4 @@ jobs:
             docker stop nestjs-api-container || true
             docker rm nestjs-api-container || true
             docker rmi $(docker images -f "dangling=true" -q) || true
-            docker run -d --name nestjs-api-container -p 3000:3000 nestjs-api
+            docker run -d --name nestjs-api-container --restart=always -p 3000:3000 nestjs-api

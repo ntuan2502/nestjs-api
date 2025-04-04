@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import * as bcrypt from 'bcrypt';
+import { Request } from 'express'; // Import Request từ express
 
 @Injectable()
 export class AuthService {
@@ -14,7 +15,7 @@ export class AuthService {
     @Inject(ConfigService) private readonly configService: ConfigService,
   ) {}
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, req: Request) {
     const { email, password } = loginDto;
 
     const user = await this.prisma.user.findUnique({
@@ -43,6 +44,9 @@ export class AuthService {
       refreshTokenExpiresAt.getDate() + lifetimeDays,
     );
 
+    // Lấy IP từ req mà không dùng any
+    const ipAddress = req.ip || 'unknown';
+
     await this.prisma.session.create({
       data: {
         userId: user.id,
@@ -50,6 +54,7 @@ export class AuthService {
         refreshToken,
         refreshTokenExpiresAt,
         isActive: true,
+        ipAddress,
       },
     });
 
@@ -64,7 +69,7 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshTokenDto: RefreshTokenDto) {
+  async refresh(refreshTokenDto: RefreshTokenDto, req: Request) {
     const { refreshToken } = refreshTokenDto;
 
     const session = await this.prisma.session.findUnique({
@@ -75,7 +80,6 @@ export class AuthService {
     }
 
     const now = new Date();
-    // Kiểm tra thời hạn tuyệt đối, xử lý trường hợp null
     if (!session.refreshTokenExpiresAt) {
       throw new UnauthorizedException('Refresh token expiration not set');
     }
@@ -83,7 +87,6 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token has expired');
     }
 
-    // Kiểm tra cooldown (1 phút)
     if (session.lastRefreshedAt) {
       const timeSinceLastRefresh =
         now.getTime() - session.lastRefreshedAt.getTime();
@@ -104,7 +107,6 @@ export class AuthService {
       email: payload.email,
     });
 
-    // Tính thời gian còn lại cho newRefreshToken
     const timeLeftMs = session.refreshTokenExpiresAt.getTime() - now.getTime();
     if (timeLeftMs <= 0) {
       throw new UnauthorizedException('Refresh token has expired');
@@ -115,12 +117,16 @@ export class AuthService {
       { expiresIn: `${timeLeftSeconds}s` },
     );
 
+    // Lấy IP từ req mà không dùng any
+    const ipAddress = req.ip || 'unknown';
+
     await this.prisma.session.update({
       where: { refreshToken },
       data: {
         token: newAccessToken,
         refreshToken: newRefreshToken,
         lastRefreshedAt: new Date(),
+        ipAddress,
       },
     });
 
@@ -198,6 +204,7 @@ export class AuthService {
         createdAt: true,
         lastUsedAt: true,
         lastRefreshedAt: true,
+        ipAddress: true,
       },
     });
   }

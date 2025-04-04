@@ -24,13 +24,13 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  login(@Body() loginDto: LoginDto, @Req() req: Request) {
+    return this.authService.login(loginDto, req);
   }
 
   @Post('refresh')
-  refresh(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refresh(refreshTokenDto);
+  refresh(@Body() refreshTokenDto: RefreshTokenDto, @Req() req: Request) {
+    return this.authService.refresh(refreshTokenDto, req);
   }
 
   @Post('logout')
@@ -62,7 +62,7 @@ export class AuthController {
 
   @Post('logout-all')
   @UseGuards(JwtAuthGuard)
-  logoutAllSessions(@Req() req: AuthRequest) {
+  logoutAll(@Req() req: AuthRequest) {
     const userId = req.user.sub;
     return this.authService.logoutAllSessions(userId);
   }

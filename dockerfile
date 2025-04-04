@@ -10,7 +10,6 @@ WORKDIR /usr/src/app
 
 # Sao chép file package.json và bun.lockb (nếu có)
 COPY package*.json ./
-COPY bun.lockb ./
 
 # Cài đặt dependencies bằng Bun
 RUN bun install

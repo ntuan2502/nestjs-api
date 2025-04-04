@@ -7,7 +7,7 @@ on:
 
 jobs:
   lint-commit-msg:
-    runs-on: [ubuntu-latest]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
@@ -22,7 +22,7 @@ jobs:
         run: bunx commitlint --last --verbose
 
   lint-code:
-    runs-on: [ubuntu-latest]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node

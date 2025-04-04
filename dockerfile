@@ -1,29 +1,34 @@
-# Use Node.js 20 slim image as base
+# Sử dụng Node.js 20 slim làm base image
 FROM node:20-slim
 
-# Install required dependencies including unzip
+# Cài đặt các dependencies cần thiết
 RUN apt-get update && \
     apt-get install -y curl unzip && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Bun
+# Cài đặt Bun
 RUN curl -fsSL https://bun.sh/install | bash
 
-# Set environment variables
+# Thêm Bun vào PATH
 ENV PATH="/root/.bun/bin:${PATH}"
 
-# Set working directory
+# Thiết lập thư mục làm việc
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json (or bun.lockb if you're using Bun lock files)
-COPY package*.json ./
+# Copy lock file trước để tận dụng layer caching
+COPY package.json ./
 
-# Install dependencies using Bun
+# Cài đặt dependencies (không bao gồm devDependencies)
 RUN bun install
 
-# Copy the rest of the source code
+# Copy toàn bộ source code vào container
 COPY . .
 
-# Expose the port and start the app (adjust according to your app's start command)
+# Chạy Prisma generate để tạo Prisma Client
+RUN bunx prisma generate
+
+# Mở port 3000
 EXPOSE 3000
+
+# Khởi chạy ứng dụng
 CMD ["bun", "start"]

@@ -1,0 +1,70 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint-commit-msg:
+    name: Lint commit message
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Lint commit message
+        run: bunx commitlint --last --verbose
+
+  lint-code:
+    name: Lint source code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run code lint
+        run: bun run lint
+
+  deploy:
+    name: Deploy to Server
+    needs: [lint-commit-msg, lint-code]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy using SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          script: |
+            cd /root/services/nestjs-api
+            git fetch origin
+            git checkout main
+            git pull
+            docker build -t nestjs-api .
+            docker stop nestjs-api-container || true
+            docker rm nestjs-api-container || true
+            docker rmi $(docker images -f "dangling=true" -q) || true
+            docker run -d --name nestjs-api-container -p 3000:3000 nestjs-api

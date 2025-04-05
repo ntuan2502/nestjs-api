@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import * as bcrypt from 'bcrypt';
-import { Request } from 'express'; // Import Request từ express
+import { Request } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -14,6 +14,25 @@ export class AuthService {
     private readonly jwtService: JwtService,
     @Inject(ConfigService) private readonly configService: ConfigService,
   ) {}
+
+  // Helper để lấy IP thực từ headers
+  private getClientIp(req: Request): string {
+    const forwardedFor = req.headers['x-forwarded-for'];
+    if (forwardedFor) {
+      // X-Forwarded-For có thể là string hoặc string[], lấy IP đầu tiên
+      const ipList = Array.isArray(forwardedFor)
+        ? forwardedFor[0]
+        : forwardedFor.split(',')[0];
+      return ipList.trim() || 'unknown';
+    }
+    // Fallback về X-Real-IP nếu có
+    const realIp = req.headers['x-real-ip'];
+    if (realIp) {
+      return Array.isArray(realIp) ? realIp[0] : realIp || 'unknown';
+    }
+    // Fallback cuối cùng về req.ip
+    return req.ip || 'unknown';
+  }
 
   async login(loginDto: LoginDto, req: Request) {
     const { email, password } = loginDto;
@@ -44,8 +63,8 @@ export class AuthService {
       refreshTokenExpiresAt.getDate() + lifetimeDays,
     );
 
-    // Lấy IP từ req mà không dùng any
-    const ipAddress = req.ip || 'unknown';
+    // Lấy IP thực của client
+    const ipAddress = this.getClientIp(req);
 
     await this.prisma.session.create({
       data: {
@@ -117,8 +136,8 @@ export class AuthService {
       { expiresIn: `${timeLeftSeconds}s` },
     );
 
-    // Lấy IP từ req mà không dùng any
-    const ipAddress = req.ip || 'unknown';
+    // Lấy IP thực của client
+    const ipAddress = this.getClientIp(req);
 
     await this.prisma.session.update({
       where: { refreshToken },

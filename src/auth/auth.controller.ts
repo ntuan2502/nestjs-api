@@ -4,7 +4,6 @@ import {
   Body,
   Get,
   Req,
-  UseGuards,
   UnauthorizedException,
   Param,
   ParseIntPipe,
@@ -12,10 +11,10 @@ import {
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { JwtAuthGuard } from './jwt-auth.guard';
 import { Request } from 'express';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UsersService } from 'src/users/users.service';
+import { Public } from 'src/common/decorators/public.decorator';
 
 interface AuthRequest extends Request {
   user: { sub: number; email: string };
@@ -28,23 +27,25 @@ export class AuthController {
     private readonly usersService: UsersService,
   ) {}
 
+  @Public()
   @Post('login')
   login(@Body() loginDto: LoginDto, @Req() req: Request) {
     return this.authService.login(loginDto, req);
   }
 
+  @Public()
   @Post('register')
   register(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
+  @Public()
   @Post('refresh')
   refresh(@Body() refreshTokenDto: RefreshTokenDto, @Req() req: Request) {
     return this.authService.refresh(refreshTokenDto, req);
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
   logout(@Req() req: AuthRequest) {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -54,14 +55,12 @@ export class AuthController {
   }
 
   @Get('sessions')
-  @UseGuards(JwtAuthGuard)
   getSessions(@Req() req: AuthRequest) {
     const userId = req.user.sub;
     return this.authService.getUserSessions(userId);
   }
 
   @Post('sessions/:id/logout')
-  @UseGuards(JwtAuthGuard)
   logoutSession(
     @Req() req: AuthRequest,
     @Param('id', ParseIntPipe) sessionId: number,
@@ -71,15 +70,12 @@ export class AuthController {
   }
 
   @Post('logout-all')
-  @UseGuards(JwtAuthGuard)
   logoutAll(@Req() req: AuthRequest) {
     const userId = req.user.sub;
     return this.authService.logoutAllSessions(userId);
   }
 
-  // Thêm endpoint /auth/me
   @Get('me')
-  @UseGuards(JwtAuthGuard)
   async getProfile(@Req() req: AuthRequest) {
     return this.authService.getProfile(req.user.sub);
   }

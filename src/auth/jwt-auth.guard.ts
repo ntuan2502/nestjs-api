@@ -6,6 +6,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { PrismaService } from '../prisma/prisma.service';
 import { Request } from 'express';
+import { Reflector } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
 
 interface AuthRequest extends Request {
   user: { sub: number; email: string };
@@ -13,11 +15,23 @@ interface AuthRequest extends Request {
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private reflector: Reflector,
+  ) {
     super();
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true; // Cho phép truy cập mà không cần token
+    }
+
     const can = await super.canActivate(context);
     if (!can) return false;
 

@@ -63,8 +63,11 @@ jobs:
             git fetch origin
             git checkout main
             git pull
+            docker container prune -f
+            docker image prune -a -f
+            docker builder prune -f
             docker build -t nestjs-api .
             docker stop nestjs-api-container || true
             docker rm nestjs-api-container || true
             docker rmi $(docker images -f "dangling=true" -q) || true
-            docker run -d --name nestjs-api-container --restart=always -p 3000:3000 nestjs-api
+            docker run -d -p 3000:3000 --name nestjs-api-container --restart=always nestjs-api

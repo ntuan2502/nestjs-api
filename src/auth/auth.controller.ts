@@ -14,6 +14,8 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { Request } from 'express';
+import { CreateUserDto } from 'src/users/dto/create-user.dto';
+import { UsersService } from 'src/users/users.service';
 
 interface AuthRequest extends Request {
   user: { sub: number; email: string };
@@ -21,11 +23,19 @@ interface AuthRequest extends Request {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Post('login')
   login(@Body() loginDto: LoginDto, @Req() req: Request) {
     return this.authService.login(loginDto, req);
+  }
+
+  @Post('register')
+  register(@Body() createUserDto: CreateUserDto) {
+    return this.usersService.create(createUserDto);
   }
 
   @Post('refresh')

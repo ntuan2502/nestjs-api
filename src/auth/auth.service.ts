@@ -34,6 +34,23 @@ export class AuthService {
     return req.ip || 'unknown';
   }
 
+  private parseLifetimeToDays(lifetime: string): number {
+    const match = lifetime.match(/^(\d+)([dhm])$/);
+    if (!match) return 7;
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+    switch (unit) {
+      case 'd':
+        return value;
+      case 'h':
+        return value / 24;
+      case 'm':
+        return value / (24 * 60);
+      default:
+        return 7;
+    }
+  }
+
   async login(loginDto: LoginDto, req: Request) {
     const { email, password } = loginDto;
 
@@ -228,20 +245,20 @@ export class AuthService {
     });
   }
 
-  private parseLifetimeToDays(lifetime: string): number {
-    const match = lifetime.match(/^(\d+)([dhm])$/);
-    if (!match) return 7;
-    const value = parseInt(match[1], 10);
-    const unit = match[2];
-    switch (unit) {
-      case 'd':
-        return value;
-      case 'h':
-        return value / 24;
-      case 'm':
-        return value / (24 * 60);
-      default:
-        return 7;
+  // Thêm phương thức lấy thông tin profile
+  async getProfile(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true, // Có thể thêm các trường khác nếu cần
+      },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
+    return user;
   }
 }

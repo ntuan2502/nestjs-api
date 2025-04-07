@@ -66,4 +66,11 @@ export class AuthController {
     const userId = req.user.sub;
     return this.authService.logoutAllSessions(userId);
   }
+
+  // Thêm endpoint /auth/me
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getProfile(@Req() req: AuthRequest) {
+    return this.authService.getProfile(req.user.sub);
+  }
 }

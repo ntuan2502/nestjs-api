@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
   Param,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -15,6 +16,7 @@ import { Request } from 'express';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { Public } from 'src/common/decorators/public.decorator';
+import { AuthGuard } from '@nestjs/passport';
 
 interface AuthRequest extends Request {
   user: { sub: number; email: string };
@@ -78,5 +80,26 @@ export class AuthController {
   @Get('me')
   async getProfile(@Req() req: AuthRequest) {
     return this.authService.getProfile(req.user.sub);
+  }
+
+  @Public()
+  @Get('microsoft')
+  @UseGuards(AuthGuard('microsoft'))
+  async microsoftLogin(): Promise<void> {
+    // Passport tự động redirect, không cần return
+  }
+
+  @Public()
+  @Get('microsoft/callback')
+  @UseGuards(AuthGuard('microsoft'))
+  async microsoftLoginCallback(@Req() req: AuthRequest) {
+    const microsoftProfile = {
+      microsoftId: req.user.sub.toString(),
+      email: req.user.email,
+      name: '', // Provide a default or fetch the name
+      accessToken: '', // Provide a default or fetch the access token
+    };
+    const user = await this.authService.validateMicrosoftUser(microsoftProfile);
+    return this.authService.loginMicrosoft(user);
   }
 }

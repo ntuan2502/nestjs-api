@@ -6,6 +6,9 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import * as bcrypt from 'bcrypt';
 import { Request } from 'express';
+import { MicrosoftProfile } from './interfaces/microsoft-profile.interface';
+import { User } from '@prisma/client';
+import { UserPayload } from './interfaces/user.interface';
 
 @Injectable()
 export class AuthService {
@@ -260,5 +263,46 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
     return user;
+  }
+
+  async validateMicrosoftUser(profile: MicrosoftProfile): Promise<User> {
+    const { microsoftId, email, name } = profile;
+
+    let user = await this.prisma.user.findUnique({
+      where: { microsoftId },
+    });
+
+    if (!user) {
+      user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (user) {
+        // Cập nhật microsoftId nếu email đã tồn tại
+        user = await this.prisma.user.update({
+          where: { email },
+          data: { microsoftId },
+        });
+      } else {
+        // Tạo user mới
+        user = await this.prisma.user.create({
+          data: {
+            microsoftId,
+            email,
+            name,
+            password: await bcrypt.hash('defaultPassword123', 10), // Provide a hashed default password
+          },
+        });
+      }
+    }
+
+    return user;
+  }
+
+  loginMicrosoft(user: User): Promise<{ accessToken: string }> {
+    const payload: UserPayload = { email: user.email, sub: user.id };
+    return Promise.resolve({
+      accessToken: this.jwtService.sign(payload),
+    });
   }
 }

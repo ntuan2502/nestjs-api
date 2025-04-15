@@ -14,16 +14,17 @@ datasource db {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  password  String
-  name      String
-  officeId  Int?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  office    Office?   @relation(fields: [officeId], references: [id])
-  sessions  Session[]
+  id          Int       @id @default(autoincrement())
+  email       String    @unique
+  password    String
+  name        String
+  microsoftId String?   @unique
+  officeId    Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  office      Office?   @relation(fields: [officeId], references: [id])
+  sessions    Session[]
 }
 
 model Session {

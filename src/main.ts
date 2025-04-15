@@ -1,15 +1,20 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config'; // Thêm ConfigService
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Lấy ConfigService từ app
   const configService = app.get(ConfigService);
 
-  // Sử dụng ValidationPipe toàn cục
+  // ✅ Enable CORS
+  app.enableCors({
+    origin: ['*'], // hoặc thêm origin khác nếu cần
+    credentials: true, // cần nếu frontend gửi cookie hoặc Authorization header
+  });
+
+  // ✅ Global Validation
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -18,7 +23,6 @@ async function bootstrap() {
     }),
   );
 
-  // Lắng nghe cổng từ .env hoặc mặc định 3000
   const port = configService.get<number>('PORT', 3000);
   await app.listen(port);
 }

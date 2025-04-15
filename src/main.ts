@@ -8,13 +8,11 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  // ✅ Enable CORS
   app.enableCors({
-    origin: ['*'], // hoặc thêm origin khác nếu cần
-    credentials: false,
+    origin: ['http://localhost:3000'],
+    credentials: true,
   });
 
-  // ✅ Global Validation
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

@@ -36,13 +36,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (!can) return false;
 
     const request: AuthRequest = context.switchToHttp().getRequest();
-    const token = request.headers.authorization?.split(' ')[1];
-    if (!token) {
-      throw new UnauthorizedException('No token provided');
+    const accessToken = request.headers.authorization?.split(' ')[1];
+    if (!accessToken) {
+      throw new UnauthorizedException('No access token provided');
     }
 
     const session = await this.prisma.session.findUnique({
-      where: { token }, // Kiểm tra access token
+      where: { accessToken }, // Kiểm tra access token
     });
 
     if (!session || !session.isActive) {
@@ -50,7 +50,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
 
     await this.prisma.session.update({
-      where: { token },
+      where: { accessToken },
       data: { lastUsedAt: new Date() },
     });
 

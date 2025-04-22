@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { omitFields } from 'src/common/utils/omit';
 
 @Injectable()
 export class UsersService {
@@ -32,9 +33,7 @@ export class UsersService {
         password: hashedPassword,
       },
     });
-    // Loại bỏ password khỏi response
-    const { password: _password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    return omitFields(user, ['password']);
   }
 
   async findAll() {
@@ -44,8 +43,7 @@ export class UsersService {
     });
     // Loại bỏ password khỏi response, dùng _password để tránh lỗi ESLint
     return users.map((user) => {
-      const { password: _password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
+      return omitFields(user, ['password']);
     });
   }
 
@@ -60,9 +58,7 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-    // Loại bỏ password khỏi response, dùng _password để tránh lỗi ESLint
-    const { password: _password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    return omitFields(user, ['password']);
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {

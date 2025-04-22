@@ -6,6 +6,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import * as bcrypt from 'bcrypt';
 import { Request } from 'express';
+import { omitFields } from 'src/common/utils/omit';
 
 @Injectable()
 export class AuthService {
@@ -86,7 +87,7 @@ export class AuthService {
     await this.prisma.session.create({
       data: {
         userId: user.id,
-        token: accessToken,
+        accessToken,
         refreshToken,
         refreshTokenExpiresAt,
         isActive: true,
@@ -95,13 +96,9 @@ export class AuthService {
     });
 
     return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      },
+      accessToken,
+      refreshToken,
+      user: omitFields(user, ['password']),
     };
   }
 
@@ -159,7 +156,7 @@ export class AuthService {
     await this.prisma.session.update({
       where: { refreshToken },
       data: {
-        token: newAccessToken,
+        accessToken: newAccessToken,
         refreshToken: newRefreshToken,
         lastRefreshedAt: new Date(),
         ipAddress,
@@ -167,21 +164,21 @@ export class AuthService {
     });
 
     return {
-      access_token: newAccessToken,
-      refresh_token: newRefreshToken,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
     };
   }
 
-  async logout(token: string) {
+  async logout(accessToken: string) {
     const session = await this.prisma.session.findUnique({
-      where: { token },
+      where: { accessToken },
     });
     if (!session || !session.isActive) {
       throw new UnauthorizedException('Invalid or already logged out session');
     }
 
     await this.prisma.session.update({
-      where: { token },
+      where: { accessToken },
       data: { isActive: false },
     });
 
@@ -229,19 +226,12 @@ export class AuthService {
   }
 
   async getUserSessions(userId: number) {
-    return this.prisma.session.findMany({
+    const sessions = await this.prisma.session.findMany({
       where: { userId },
-      select: {
-        id: true,
-        token: true,
-        refreshToken: true,
-        refreshTokenExpiresAt: true,
-        isActive: true,
-        createdAt: true,
-        lastUsedAt: true,
-        lastRefreshedAt: true,
-        ipAddress: true,
-      },
+    });
+
+    return sessions.map((session) => {
+      omitFields(session, ['accessToken', 'refreshToken']);
     });
   }
 
@@ -249,16 +239,10 @@ export class AuthService {
   async getProfile(userId: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId, deletedAt: null },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true, // Có thể thêm các trường khác nếu cần
-      },
     });
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    return user;
+    return omitFields(user, ['password']);
   }
 }

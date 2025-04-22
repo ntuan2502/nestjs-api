@@ -231,7 +231,7 @@ export class AuthService {
     });
 
     return sessions.map((session) => {
-      omitFields(session, ['accessToken', 'refreshToken']);
+      return session;
     });
   }
 

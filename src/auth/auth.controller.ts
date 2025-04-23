@@ -13,6 +13,7 @@ import { Request } from 'express';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { Public } from 'src/common/decorators/public.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 interface AuthRequest extends Request {
   user: { sub: number; email: string };
@@ -79,6 +80,16 @@ export class AuthController {
 
   @Get('profile')
   async getProfile(@Req() req: AuthRequest) {
-    return this.authService.getProfile(req.user.sub);
+    const userId = req.user.sub;
+    return this.authService.getProfile(userId);
+  }
+
+  @Post('change-password')
+  changePassword(
+    @Body() changePasswordDto: ChangePasswordDto,
+    @Req() req: AuthRequest,
+  ) {
+    const userId = req.user.sub;
+    return this.authService.changePassword(changePasswordDto, userId);
   }
 }

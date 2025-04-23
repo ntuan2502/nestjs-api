@@ -50,6 +50,7 @@ export class AuthService {
 
   async login(loginDto: LoginDto, req: Request) {
     const { email, password } = loginDto;
+    const userAgent = req.headers['user-agent'];
 
     const user = await this.prisma.user.findUnique({
       where: { email, deletedAt: null },
@@ -87,6 +88,7 @@ export class AuthService {
         refreshTokenExpiresAt,
         isActive: true,
         ipAddress,
+        userAgent,
       },
     });
 

@@ -39,6 +39,7 @@ model Session {
   lastUsedAt            DateTime  @default(now())
   lastRefreshedAt       DateTime?
   ipAddress             String?
+  userAgent             String?
   user                  User      @relation(fields: [userId], references: [id])
 }
 

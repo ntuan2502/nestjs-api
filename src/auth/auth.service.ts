@@ -16,22 +16,18 @@ export class AuthService {
     @Inject(ConfigService) private readonly configService: ConfigService,
   ) {}
 
-  // Helper để lấy IP thực từ headers
   private getClientIp(req: Request): string {
     const forwardedFor = req.headers['x-forwarded-for'];
     if (forwardedFor) {
-      // X-Forwarded-For có thể là string hoặc string[], lấy IP đầu tiên
       const ipList = Array.isArray(forwardedFor)
         ? forwardedFor[0]
         : forwardedFor.split(',')[0];
       return ipList.trim() || 'unknown';
     }
-    // Fallback về X-Real-IP nếu có
     const realIp = req.headers['x-real-ip'];
     if (realIp) {
       return Array.isArray(realIp) ? realIp[0] : realIp || 'unknown';
     }
-    // Fallback cuối cùng về req.ip
     return req.ip || 'unknown';
   }
 
@@ -81,7 +77,6 @@ export class AuthService {
       refreshTokenExpiresAt.getDate() + lifetimeDays,
     );
 
-    // Lấy IP thực của client
     const ipAddress = this.getClientIp(req);
 
     await this.prisma.session.create({
@@ -150,7 +145,6 @@ export class AuthService {
       { expiresIn: `${timeLeftSeconds}s` },
     );
 
-    // Lấy IP thực của client
     const ipAddress = this.getClientIp(req);
 
     await this.prisma.session.update({
@@ -185,9 +179,12 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
-  async logoutSession(userId: number, sessionId: number) {
+  async logoutSession(userId: number, accessToken: string) {
     const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
+      where: {
+        accessToken,
+        userId,
+      },
     });
 
     if (!session) {
@@ -201,14 +198,14 @@ export class AuthService {
     }
 
     await this.prisma.session.update({
-      where: { id: sessionId },
+      where: { accessToken },
       data: { isActive: false },
     });
 
-    return { message: `Session ${sessionId} logged out successfully` };
+    return { message: `Logged out successfully` };
   }
 
-  async logoutAllSessions(userId: number) {
+  async logoutAll(userId: number) {
     const activeSessions = await this.prisma.session.findMany({
       where: { userId, isActive: true },
     });
@@ -225,20 +222,23 @@ export class AuthService {
     return { message: `Logged out ${activeSessions.length} active sessions` };
   }
 
-  async getUserSessions(userId: number) {
+  async getSessions(userId: number) {
     const sessions = await this.prisma.session.findMany({
       where: { userId },
+      orderBy: {
+        id: 'desc',
+      },
     });
 
-    return sessions.map((session) => {
-      return session;
-    });
+    return sessions;
   }
 
-  // Thêm phương thức lấy thông tin profile
   async getProfile(userId: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId, deletedAt: null },
+      include: {
+        office: true,
+      },
     });
     if (!user) {
       throw new UnauthorizedException('User not found');

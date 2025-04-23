@@ -5,8 +5,6 @@ import {
   Get,
   Req,
   UnauthorizedException,
-  Param,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -57,25 +55,29 @@ export class AuthController {
   @Get('sessions')
   getSessions(@Req() req: AuthRequest) {
     const userId = req.user.sub;
-    return this.authService.getUserSessions(userId);
+    return this.authService.getSessions(userId);
   }
 
-  @Post('sessions/:id/logout')
-  logoutSession(
-    @Req() req: AuthRequest,
-    @Param('id', ParseIntPipe) sessionId: number,
-  ) {
-    const userId = req.user.sub;
-    return this.authService.logoutSession(userId, sessionId);
+  @Public()
+  @Post('logout-session')
+  logoutSession(@Body() userData: { accessToken: string; userId: number }) {
+    const { accessToken, userId } = userData;
+    if (!userId) {
+      throw new UnauthorizedException('userId not found');
+    }
+    if (!accessToken) {
+      throw new UnauthorizedException('accessToken not found');
+    }
+    return this.authService.logoutSession(Number(userId), accessToken);
   }
 
   @Post('logout-all')
   logoutAll(@Req() req: AuthRequest) {
     const userId = req.user.sub;
-    return this.authService.logoutAllSessions(userId);
+    return this.authService.logoutAll(userId);
   }
 
-  @Get('me')
+  @Get('profile')
   async getProfile(@Req() req: AuthRequest) {
     return this.authService.getProfile(req.user.sub);
   }

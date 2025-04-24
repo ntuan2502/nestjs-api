@@ -14,6 +14,7 @@ import * as bcrypt from 'bcrypt';
 import { Request } from 'express';
 import { omitFields } from 'src/common/utils/omit';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -263,6 +264,34 @@ export class AuthService {
     return {
       message: 'Profile retrieved successfully',
       user: omitFields(user, ['password']),
+    };
+  }
+
+  async updateProfile(updateProfileDto: UpdateProfileDto, userId: number) {
+    const { name, gender, dob } = updateProfileDto;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name,
+        gender,
+        dob,
+      },
+      include: {
+        office: true,
+      },
+    });
+
+    return {
+      message: 'Profile updated successfully',
+      user: omitFields(updatedUser, ['password']),
     };
   }
 

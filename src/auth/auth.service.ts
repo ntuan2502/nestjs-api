@@ -1,4 +1,10 @@
-import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  Inject,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -106,8 +112,11 @@ export class AuthService {
     const session = await this.prisma.session.findUnique({
       where: { refreshToken },
     });
-    if (!session || !session.isActive) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+    if (!session) {
+      throw new BadRequestException('Session not found');
+    }
+    if (!session.isActive) {
+      throw new BadRequestException('Session already logged out');
     }
 
     const now = new Date();
@@ -191,13 +200,13 @@ export class AuthService {
     });
 
     if (!session) {
-      throw new UnauthorizedException('Session not found');
+      throw new BadRequestException('Session not found');
     }
     if (session.userId !== userId) {
-      throw new UnauthorizedException('You can only logout your own sessions');
+      throw new ForbiddenException('You can only logout your own sessions');
     }
     if (!session.isActive) {
-      throw new UnauthorizedException('Session already logged out');
+      throw new BadRequestException('Session already logged out');
     }
 
     await this.prisma.session.update({
@@ -214,7 +223,7 @@ export class AuthService {
     });
 
     if (activeSessions.length === 0) {
-      return { message: 'No active sessions to logout' };
+      throw new BadRequestException('No active sessions to logout');
     }
 
     await this.prisma.session.updateMany({
@@ -261,7 +270,7 @@ export class AuthService {
 
     const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Old password is incorrect');
+      throw new BadRequestException('Old password is incorrect');
     }
 
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);

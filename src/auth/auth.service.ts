@@ -100,6 +100,7 @@ export class AuthService {
     });
 
     return {
+      message: 'Login successful',
       accessToken,
       refreshToken,
       user: omitFields(user, ['password']),
@@ -170,6 +171,7 @@ export class AuthService {
     });
 
     return {
+      message: 'Refresh token successful',
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
     };
@@ -242,7 +244,10 @@ export class AuthService {
       },
     });
 
-    return sessions;
+    return {
+      message: 'Sessions retrieved successfully',
+      sessions,
+    };
   }
 
   async getProfile(userId: number) {
@@ -255,7 +260,10 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    return omitFields(user, ['password']);
+    return {
+      message: 'Profile retrieved successfully',
+      user: omitFields(user, ['password']),
+    };
   }
 
   async changePassword(changePasswordDto: ChangePasswordDto, userId: number) {

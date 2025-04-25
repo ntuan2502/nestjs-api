@@ -14,28 +14,42 @@ datasource db {
 }
 
 model User {
-  id       Int       @id @default(autoincrement())
+  // ID
+  id Int @id @default(autoincrement())
+
+  // Basic
   email    String    @unique
   password String
   name     String
   gender   String?
   dob      DateTime?
+  phone    String?
+  address  String?
+  avatar   String?
 
+  // Timestamps
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  // FK
   officeId     Int?
   departmentId Int?
 
+  // BelongsTo 
   office     Office?     @relation(fields: [officeId], references: [id])
   department Department? @relation(fields: [departmentId], references: [id])
-  
-  sessions   Session[]
+
+  // HasMany
+  sessions Session[]
+  Asset    Asset[]
 }
 
 model Session {
-  id                    Int       @id @default(autoincrement())
+  // ID
+  id Int @id @default(autoincrement())
+
+  // Basic
   accessToken           String    @unique
   refreshToken          String?   @unique
   refreshTokenExpiresAt DateTime?
@@ -43,37 +57,165 @@ model Session {
   ipAddress             String?
   userAgent             String?
 
+  // Timestamps
   createdAt       DateTime  @default(now())
   lastUsedAt      DateTime  @default(now())
   lastRefreshedAt DateTime?
 
+  // FK
   userId Int
 
+  // BelongsTo
   user User @relation(fields: [userId], references: [id])
 }
 
 model Office {
-  id                Int     @id @default(autoincrement())
+  // ID
+  id Int @id @default(autoincrement())
+
+  // Basic
   name              String
   internationalName String?
   shortName         String?
   taxCode           String  @unique
   address           String?
 
+  // Timestamps
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  // HasMany
   users User[]
+  Asset Asset[]
 }
 
 model Department {
-  id   Int    @id @default(autoincrement())
+  // ID
+  id Int @id @default(autoincrement())
+
+  // Basic
   name String
 
+  // Timestamps
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  // HasMany
   users User[]
+  Asset Asset[]
+}
+
+model DeviceType {
+  // ID
+  id Int @id @default(autoincrement())
+
+  // Basic
+  name String
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // HasMany
+  deviceModels DeviceModel[]
+  Assets       Asset[]
+}
+
+model DeviceModel {
+  // ID
+  id Int @id @default(autoincrement())
+
+  // Basic
+  name String
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // FK
+  deviceTypeId Int
+
+  // BelongsTo
+  deviceType DeviceType @relation(fields: [deviceTypeId], references: [id])
+
+  // HasMany
+  Assets Asset[]
+}
+
+model Bank {
+  // ID
+  id Int @id @default(autoincrement())
+
+  // Basic
+  bankName      String
+  accountNumber String
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // FK
+  supplierId Int
+
+  // BelongsTo
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+}
+
+model Supplier {
+  // ID
+  id Int @id @default(autoincrement())
+
+  // Basic
+  name    String
+  address String
+  taxCode String
+  phone   String
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // HasMany
+  banks  Bank[]
+  Assets Asset[]
+}
+
+model Asset {
+  // ID
+  id Int @id @default(autoincrement())
+
+  // Basic
+  internalCode     String   @unique
+  serialNumber     String
+  purchaseDate     DateTime
+  warrantyUntil    DateTime
+  status           String
+  customProperties Json // Key-Value dạng JSON: { cpu: "...", ram: "...", resolution: "..." }
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // FK
+  deviceModelId Int
+  deviceTypeId  Int
+  supplierId    Int
+  departmentId  Int?
+  officeId      Int?
+  userId        Int?
+
+  // BelongsTo
+  deviceModel DeviceModel @relation(fields: [deviceModelId], references: [id])
+  deviceType  DeviceType  @relation(fields: [deviceTypeId], references: [id])
+  supplier    Supplier    @relation(fields: [supplierId], references: [id])
+  department  Department? @relation(fields: [departmentId], references: [id])
+  office      Office?     @relation(fields: [officeId], references: [id])
+  user        User?       @relation(fields: [userId], references: [id])
 }

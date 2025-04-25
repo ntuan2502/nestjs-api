@@ -268,7 +268,7 @@ export class AuthService {
   }
 
   async updateProfile(updateProfileDto: UpdateProfileDto, userId: number) {
-    const { name, gender, dob } = updateProfileDto;
+    const { name, gender, dob, phone, address, avatar } = updateProfileDto;
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId, deletedAt: null },
@@ -283,6 +283,9 @@ export class AuthService {
         name,
         gender,
         dob,
+        phone,
+        address,
+        avatar,
       },
       include: {
         office: true,

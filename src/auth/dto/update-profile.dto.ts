@@ -11,4 +11,14 @@ export class UpdateProfileDto {
 
   @IsString({ message: 'Date of Birth must be a string' })
   dob: Date;
+
+  @IsString({ message: 'Phone must be a string' })
+  @MinLength(1, { message: 'Phone must not be empty' })
+  phone: string;
+
+  @IsString({ message: 'Address must be a string' })
+  address: string;
+
+  @IsString({ message: 'Avatar must be a string' })
+  avatar: string;
 }

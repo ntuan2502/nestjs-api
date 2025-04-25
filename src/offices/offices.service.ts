@@ -7,17 +7,25 @@ import { UpdateOfficeDto } from './dto/update-office.dto';
 export class OfficesService {
   constructor(private prisma: PrismaService) {}
 
-  create(createOfficeDto: CreateOfficeDto) {
-    return this.prisma.office.create({
+  async create(createOfficeDto: CreateOfficeDto) {
+    const createOffice = await this.prisma.office.create({
       data: createOfficeDto,
     });
+    return {
+      message: 'Office created successfully',
+      office: createOffice,
+    };
   }
 
-  findAll() {
-    return this.prisma.office.findMany({
+  async findAll() {
+    const offices = await this.prisma.office.findMany({
       where: { deletedAt: null },
       include: { users: true },
     });
+    return {
+      message: 'Offices fetched successfully',
+      offices,
+    };
   }
 
   async findOne(id: number) {
@@ -28,7 +36,10 @@ export class OfficesService {
     if (!office) {
       throw new NotFoundException(`Office with ID ${id} not found`);
     }
-    return office;
+    return {
+      message: 'Office fetched successfully',
+      office,
+    };
   }
 
   async update(id: number, updateOfficeDto: UpdateOfficeDto) {
@@ -38,10 +49,14 @@ export class OfficesService {
     if (!office) {
       throw new NotFoundException(`Office with ID ${id} not found`);
     }
-    return this.prisma.office.update({
+    const updateOffice = await this.prisma.office.update({
       where: { id },
       data: updateOfficeDto,
     });
+    return {
+      message: 'Office updated successfully',
+      office: updateOffice,
+    };
   }
 
   async remove(id: number) {
@@ -51,9 +66,13 @@ export class OfficesService {
     if (!office) {
       throw new NotFoundException(`Office with ID ${id} not found`);
     }
-    return this.prisma.office.update({
+    const deleteOffice = await this.prisma.office.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    return {
+      message: 'Office deleted successfully',
+      office: deleteOffice,
+    };
   }
 }

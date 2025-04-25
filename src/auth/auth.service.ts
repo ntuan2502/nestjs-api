@@ -256,6 +256,7 @@ export class AuthService {
       where: { id: userId, deletedAt: null },
       include: {
         office: true,
+        department: true,
       },
     });
     if (!user) {

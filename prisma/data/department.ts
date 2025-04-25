@@ -1,0 +1,18 @@
+export const departments = [
+  'Accounting',
+  'Administration',
+  'Business Development',
+  'Electricity Operation',
+  'General Director',
+  'Human Resource',
+  'Information Technology',
+  'Land Management',
+  'Legal',
+  'Personal Assistant',
+  'Project Management',
+  'Relationship Management',
+  'Sales & Marketing',
+  'Secretary',
+  'Site Management',
+  'Water & Environment',
+];

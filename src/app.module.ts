@@ -12,6 +12,7 @@ import { DepartmentsModule } from './departments/departments.module';
 import { DeviceTypesModule } from './device-types/device-types.module';
 import { DeviceModelsModule } from './device-models/device-models.module';
 import { BanksModule } from './banks/banks.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { BanksModule } from './banks/banks.module';
     DeviceTypesModule,
     DeviceModelsModule,
     BanksModule,
+    SuppliersModule,
   ],
   controllers: [AppController],
   providers: [

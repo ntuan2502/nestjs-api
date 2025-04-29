@@ -151,7 +151,7 @@ model Bank {
   id Int @id @default(autoincrement())
 
   // Basic
-  bankName      String
+  name      String
   accountNumber String
 
   // Timestamps

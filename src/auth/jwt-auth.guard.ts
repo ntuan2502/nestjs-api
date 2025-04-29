@@ -29,7 +29,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     ]);
 
     if (isPublic) {
-      return true; // Cho phép truy cập mà không cần token
+      return true;
     }
 
     const can = await super.canActivate(context);
@@ -42,7 +42,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
 
     const session = await this.prisma.session.findUnique({
-      where: { accessToken }, // Kiểm tra access token
+      where: { accessToken },
     });
 
     if (!session || !session.isActive) {

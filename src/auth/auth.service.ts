@@ -26,24 +26,31 @@ export class AuthService {
 
   private getClientIp(req: Request): string {
     const forwardedFor = req.headers['x-forwarded-for'];
+
     if (forwardedFor) {
       const ipList = Array.isArray(forwardedFor)
         ? forwardedFor[0]
         : forwardedFor.split(',')[0];
       return ipList.trim() || 'unknown';
     }
+
     const realIp = req.headers['x-real-ip'];
+
     if (realIp) {
       return Array.isArray(realIp) ? realIp[0] : realIp || 'unknown';
     }
+
     return req.ip || 'unknown';
   }
 
   private parseLifetimeToDays(lifetime: string): number {
     const match = lifetime.match(/^(\d+)([dhm])$/);
+
     if (!match) return 7;
+
     const value = parseInt(match[1], 10);
     const unit = match[2];
+
     switch (unit) {
       case 'd':
         return value;
@@ -60,14 +67,16 @@ export class AuthService {
     const { email, password } = loginDto;
     const userAgent = req.headers['user-agent'];
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: { email, deletedAt: null },
     });
+
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
+
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -114,6 +123,7 @@ export class AuthService {
     const session = await this.prisma.session.findUnique({
       where: { refreshToken },
     });
+
     if (!session) {
       throw new BadRequestException('Session not found');
     }
@@ -182,6 +192,7 @@ export class AuthService {
     const session = await this.prisma.session.findUnique({
       where: { accessToken },
     });
+
     if (!session || !session.isActive) {
       throw new UnauthorizedException('Invalid or already logged out session');
     }
@@ -195,7 +206,7 @@ export class AuthService {
   }
 
   async logoutSession(userId: number, accessToken: string) {
-    const session = await this.prisma.session.findUnique({
+    const session = await this.prisma.session.findFirst({
       where: {
         accessToken,
         userId,
@@ -252,16 +263,18 @@ export class AuthService {
   }
 
   async getProfile(userId: number) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: { id: userId, deletedAt: null },
       include: {
         office: true,
         department: true,
       },
     });
+
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
+
     return {
       message: 'Profile retrieved successfully',
       user: omitFields(user, ['password']),
@@ -271,7 +284,7 @@ export class AuthService {
   async updateProfile(updateProfileDto: UpdateProfileDto, userId: number) {
     const { name, gender, dob, phone, address, avatar } = updateProfileDto;
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: { id: userId, deletedAt: null },
     });
     if (!user) {
@@ -302,14 +315,16 @@ export class AuthService {
   async changePassword(changePasswordDto: ChangePasswordDto, userId: number) {
     const { oldPassword, newPassword } = changePasswordDto;
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: { id: userId, deletedAt: null },
     });
+
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
     const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+
     if (!isPasswordValid) {
       throw new BadRequestException('Old password is incorrect');
     }

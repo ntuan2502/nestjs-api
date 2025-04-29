@@ -16,16 +16,16 @@ export class UsersService {
   async create(createUserDto: CreateUserDto) {
     const { email, password, ...rest } = createUserDto;
 
-    // Kiểm tra xem email đã tồn tại trong các user chưa xóa chưa
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUser = await this.prisma.user.findFirst({
       where: { email, deletedAt: null },
     });
+
     if (existingUser) {
       throw new BadRequestException('Email already exists');
     }
 
-    // Hash mật khẩu và tạo user
     const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await this.prisma.user.create({
       data: {
         ...rest,
@@ -33,15 +33,16 @@ export class UsersService {
         password: hashedPassword,
       },
     });
+
     return omitFields(user, ['password']);
   }
 
   async findAll() {
     const users = await this.prisma.user.findMany({
       where: { deletedAt: null },
-      include: { office: true },
+      include: { office: true, department: true },
     });
-    // Loại bỏ password khỏi response, dùng _password để tránh lỗi ESLint
+
     return users.map((user) => {
       return omitFields(user, ['password']);
     });
@@ -51,13 +52,16 @@ export class UsersService {
     if (id <= 0) {
       throw new BadRequestException('ID must be a positive number');
     }
-    const user = await this.prisma.user.findUnique({
+
+    const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
-      include: { office: true },
+      include: { office: true, department: true },
     });
+
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
+
     return omitFields(user, ['password']);
   }
 
@@ -65,19 +69,22 @@ export class UsersService {
     if (id <= 0) {
       throw new BadRequestException('ID must be a positive number');
     }
-    const user = await this.prisma.user.findUnique({
+
+    const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
     });
+
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
+
     const { password, email, ...rest } = updateUserDto;
 
-    // Nếu cập nhật email, kiểm tra trùng lặp trong các user chưa xóa
     if (email && email !== user.email) {
-      const existingUser = await this.prisma.user.findUnique({
+      const existingUser = await this.prisma.user.findFirst({
         where: { email, deletedAt: null },
       });
+
       if (existingUser) {
         throw new BadRequestException('Email already exists');
       }
@@ -86,6 +93,7 @@ export class UsersService {
     const data = password
       ? { ...rest, email, password: await bcrypt.hash(password, 10) }
       : { ...rest, email };
+
     return this.prisma.user.update({
       where: { id },
       data,
@@ -96,12 +104,15 @@ export class UsersService {
     if (id <= 0) {
       throw new BadRequestException('ID must be a positive number');
     }
-    const user = await this.prisma.user.findUnique({
+
+    const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
     });
+
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
+
     return this.prisma.user.update({
       where: { id },
       data: { deletedAt: new Date() },

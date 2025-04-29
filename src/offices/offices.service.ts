@@ -8,20 +8,32 @@ export class OfficesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createOfficeDto: CreateOfficeDto) {
-    const createOffice = await this.prisma.office.create({
+    const existingOffice = await this.prisma.office.findFirst({
+      where: { taxCode: createOfficeDto.taxCode, deletedAt: null },
+    });
+
+    if (existingOffice) {
+      throw new NotFoundException(
+        `Office with taxCode ${createOfficeDto.taxCode} already exists`,
+      );
+    }
+
+    const office = await this.prisma.office.create({
       data: createOfficeDto,
     });
+
     return {
       message: 'Office created successfully',
-      office: createOffice,
+      office,
     };
   }
 
   async findAll() {
     const offices = await this.prisma.office.findMany({
       where: { deletedAt: null },
-      include: { users: true },
+      include: { users: true, assets: true },
     });
+
     return {
       message: 'Offices fetched successfully',
       offices,
@@ -29,13 +41,15 @@ export class OfficesService {
   }
 
   async findOne(id: number) {
-    const office = await this.prisma.office.findUnique({
+    const office = await this.prisma.office.findFirst({
       where: { id, deletedAt: null },
-      include: { users: true },
+      include: { users: true, assets: true },
     });
+
     if (!office) {
       throw new NotFoundException(`Office with ID ${id} not found`);
     }
+
     return {
       message: 'Office fetched successfully',
       office,
@@ -43,16 +57,19 @@ export class OfficesService {
   }
 
   async update(id: number, updateOfficeDto: UpdateOfficeDto) {
-    const office = await this.prisma.office.findUnique({
+    const office = await this.prisma.office.findFirst({
       where: { id, deletedAt: null },
     });
+
     if (!office) {
       throw new NotFoundException(`Office with ID ${id} not found`);
     }
+
     const updateOffice = await this.prisma.office.update({
       where: { id },
       data: updateOfficeDto,
     });
+
     return {
       message: 'Office updated successfully',
       office: updateOffice,
@@ -60,19 +77,21 @@ export class OfficesService {
   }
 
   async remove(id: number) {
-    const office = await this.prisma.office.findUnique({
+    const office = await this.prisma.office.findFirst({
       where: { id, deletedAt: null },
     });
+
     if (!office) {
       throw new NotFoundException(`Office with ID ${id} not found`);
     }
-    const deleteOffice = await this.prisma.office.update({
+
+    await this.prisma.office.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+
     return {
       message: 'Office deleted successfully',
-      office: deleteOffice,
     };
   }
 }

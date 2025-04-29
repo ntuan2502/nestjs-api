@@ -1,0 +1,17 @@
+export const deviceTypes = [
+  { name: 'Accessories' },
+  { name: 'Access Point' },
+  { name: 'Desktop' },
+  { name: 'Firewall' },
+  { name: 'Laptop' },
+  { name: 'Monitor' },
+  { name: 'Printer' },
+  { name: 'Router' },
+  { name: 'Server' },
+  { name: 'Speaker' },
+  { name: 'Storage' },
+  { name: 'Switch' },
+  { name: 'UPS Server' },
+  { name: 'Video Conference' },
+  { name: 'Wireless Controller' },
+];

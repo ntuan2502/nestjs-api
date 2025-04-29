@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -8,6 +12,16 @@ export class DepartmentsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createDepartmentDto: CreateDepartmentDto) {
+    const existingDepartment = await this.prisma.department.findFirst({
+      where: { name: createDepartmentDto.name, deletedAt: null },
+    });
+
+    if (existingDepartment) {
+      throw new BadRequestException(
+        `Department with name ${createDepartmentDto.name} already exists`,
+      );
+    }
+
     const department = await this.prisma.department.create({
       data: createDepartmentDto,
     });
@@ -31,13 +45,15 @@ export class DepartmentsService {
   }
 
   async findOne(id: number) {
-    const department = await this.prisma.department.findUnique({
+    const department = await this.prisma.department.findFirst({
       where: { id, deletedAt: null },
       include: { users: true },
     });
+
     if (!department) {
       throw new NotFoundException(`Department with ID ${id} not found`);
     }
+
     return {
       message: 'Department fetched successfully',
       department,
@@ -45,16 +61,19 @@ export class DepartmentsService {
   }
 
   async update(id: number, updateDepartmentDto: UpdateDepartmentDto) {
-    const department = await this.prisma.department.findUnique({
+    const department = await this.prisma.department.findFirst({
       where: { id, deletedAt: null },
     });
+
     if (!department) {
       throw new NotFoundException(`Department with ID ${id} not found`);
     }
+
     const updatedDepartment = await this.prisma.department.update({
       where: { id },
       data: updateDepartmentDto,
     });
+
     return {
       message: 'Department updated successfully',
       department: updatedDepartment,
@@ -62,19 +81,21 @@ export class DepartmentsService {
   }
 
   async remove(id: number) {
-    const department = await this.prisma.department.findUnique({
+    const department = await this.prisma.department.findFirst({
       where: { id, deletedAt: null },
     });
+
     if (!department) {
       throw new NotFoundException(`Department with ID ${id} not found`);
     }
-    const deletedDepartment = await this.prisma.department.update({
+
+    await this.prisma.department.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+
     return {
       message: 'Department removed successfully',
-      department: deletedDepartment,
     };
   }
 }

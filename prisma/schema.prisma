@@ -42,7 +42,7 @@ model User {
 
   // HasMany
   sessions Session[]
-  Asset    Asset[]
+  assets   Asset[]
 }
 
 model Session {
@@ -63,10 +63,10 @@ model Session {
   lastRefreshedAt DateTime?
 
   // FK
-  userId Int
+  userId Int?
 
   // BelongsTo
-  user User @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 }
 
 model Office {
@@ -74,7 +74,7 @@ model Office {
   id Int @id @default(autoincrement())
 
   // Basic
-  name              String
+  name              String  @unique
   internationalName String?
   shortName         String?
   taxCode           String  @unique
@@ -86,8 +86,8 @@ model Office {
   deletedAt DateTime?
 
   // HasMany
-  users User[]
-  Asset Asset[]
+  users  User[]
+  assets Asset[]
 }
 
 model Department {
@@ -95,7 +95,7 @@ model Department {
   id Int @id @default(autoincrement())
 
   // Basic
-  name String
+  name String @unique
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -103,8 +103,8 @@ model Department {
   deletedAt DateTime?
 
   // HasMany
-  users User[]
-  Asset Asset[]
+  users  User[]
+  assets Asset[]
 }
 
 model DeviceType {
@@ -112,7 +112,7 @@ model DeviceType {
   id Int @id @default(autoincrement())
 
   // Basic
-  name String
+  name String @unique
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -121,7 +121,7 @@ model DeviceType {
 
   // HasMany
   deviceModels DeviceModel[]
-  Assets       Asset[]
+  assets       Asset[]
 }
 
 model DeviceModel {
@@ -129,7 +129,7 @@ model DeviceModel {
   id Int @id @default(autoincrement())
 
   // Basic
-  name String
+  name String @unique
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -137,13 +137,13 @@ model DeviceModel {
   deletedAt DateTime?
 
   // FK
-  deviceTypeId Int
+  deviceTypeId Int?
 
   // BelongsTo
-  deviceType DeviceType @relation(fields: [deviceTypeId], references: [id])
+  deviceType DeviceType? @relation(fields: [deviceTypeId], references: [id])
 
   // HasMany
-  Assets Asset[]
+  assets Asset[]
 }
 
 model Bank {
@@ -160,10 +160,10 @@ model Bank {
   deletedAt DateTime?
 
   // FK
-  supplierId Int
+  supplierId Int?
 
   // BelongsTo
-  supplier Supplier @relation(fields: [supplierId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
 }
 
 model Supplier {
@@ -173,7 +173,7 @@ model Supplier {
   // Basic
   name    String
   address String
-  taxCode String
+  taxCode String @unique
   phone   String
 
   // Timestamps
@@ -183,7 +183,7 @@ model Supplier {
 
   // HasMany
   banks  Bank[]
-  Assets Asset[]
+  assets Asset[]
 }
 
 model Asset {
@@ -204,17 +204,17 @@ model Asset {
   deletedAt DateTime?
 
   // FK
-  deviceModelId Int
-  deviceTypeId  Int
-  supplierId    Int
+  deviceModelId Int?
+  deviceTypeId  Int?
+  supplierId    Int?
   departmentId  Int?
   officeId      Int?
   userId        Int?
 
   // BelongsTo
-  deviceModel DeviceModel @relation(fields: [deviceModelId], references: [id])
-  deviceType  DeviceType  @relation(fields: [deviceTypeId], references: [id])
-  supplier    Supplier    @relation(fields: [supplierId], references: [id])
+  deviceModel DeviceModel? @relation(fields: [deviceModelId], references: [id])
+  deviceType  DeviceType?  @relation(fields: [deviceTypeId], references: [id])
+  supplier    Supplier?    @relation(fields: [supplierId], references: [id])
   department  Department? @relation(fields: [departmentId], references: [id])
   office      Office?     @relation(fields: [officeId], references: [id])
   user        User?       @relation(fields: [userId], references: [id])

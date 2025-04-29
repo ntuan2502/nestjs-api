@@ -9,6 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { DepartmentsModule } from './departments/departments.module';
+import { DeviceTypesModule } from './device-types/device-types.module';
+import { DeviceModelsModule } from './device-models/device-models.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { DepartmentsModule } from './departments/departments.module';
     OfficesModule,
     AuthModule,
     DepartmentsModule,
+    DeviceTypesModule,
+    DeviceModelsModule,
   ],
   controllers: [AppController],
   providers: [

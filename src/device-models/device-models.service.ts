@@ -1,0 +1,100 @@
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { CreateDeviceModelDto } from './dto/create-device-model.dto';
+import { UpdateDeviceModelDto } from './dto/update-device-model.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+
+@Injectable()
+export class DeviceModelsService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(createDeviceModelDto: CreateDeviceModelDto) {
+    const existingDeviceModel = await this.prisma.deviceModel.findFirst({
+      where: {
+        name: createDeviceModelDto.name,
+        deletedAt: null,
+      },
+    });
+
+    if (existingDeviceModel) {
+      throw new BadRequestException(
+        'Device model with this name already exists',
+      );
+    }
+
+    const deviceModel = await this.prisma.deviceModel.create({
+      data: createDeviceModelDto,
+    });
+
+    return {
+      message: 'DeviceModel created successfully',
+      deviceModel,
+    };
+  }
+
+  async findAll() {
+    const deviceModels = await this.prisma.deviceModel.findMany({
+      where: { deletedAt: null },
+      include: { deviceType: true, assets: true },
+    });
+
+    return {
+      message: 'DeviceModels fetched successfully',
+      deviceModels,
+    };
+  }
+
+  async findOne(id: number) {
+    const deviceModel = await this.prisma.deviceModel.findFirst({
+      where: { id, deletedAt: null },
+      include: { deviceType: true, assets: true },
+    });
+
+    if (!deviceModel) {
+      throw new BadRequestException(`DeviceModel with ID ${id} not found`);
+    }
+
+    return {
+      message: 'DeviceModel fetched successfully',
+      deviceModel,
+    };
+  }
+
+  async update(id: number, updateDeviceModelDto: UpdateDeviceModelDto) {
+    const deviceModel = await this.prisma.deviceModel.findFirst({
+      where: { id, deletedAt: null },
+    });
+
+    if (!deviceModel) {
+      throw new BadRequestException(`DeviceModel with ID ${id} not found`);
+    }
+
+    const updatedDeviceModel = await this.prisma.deviceModel.update({
+      where: { id },
+      data: updateDeviceModelDto,
+    });
+
+    return {
+      message: 'DeviceModel updated successfully',
+      deviceModel: updatedDeviceModel,
+    };
+  }
+
+  async remove(id: number) {
+    const deviceModel = await this.prisma.deviceModel.findFirst({
+      where: { id, deletedAt: null },
+    });
+
+    if (!deviceModel) {
+      throw new BadRequestException(`DeviceModel with ID ${id} not found`);
+    }
+
+    await this.prisma.deviceModel.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    return {
+      message: 'DeviceModel removed successfully',
+    };
+  }
+}

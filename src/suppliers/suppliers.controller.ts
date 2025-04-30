@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { SuppliersService } from './suppliers.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
@@ -21,8 +22,8 @@ export class SuppliersController {
   }
 
   @Get()
-  findAll() {
-    return this.suppliersService.findAll();
+  findAll(@Query('include') include?: string | string[]) {
+    return this.suppliersService.findAll(include);
   }
 
   @Get(':id')

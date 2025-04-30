@@ -152,18 +152,37 @@ model Bank {
 
   // Basic
   name      String
-  accountNumber String
+  shortName String? // optional, ví dụ: VCB, ACB
 
   // Timestamps
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  // HasMany
+  bankAccounts BankAccount[]
+}
+
+model BankAccount {
+  // ID
+  id Int @id @default(autoincrement())
+
+  // Basic
+  accountNumber String
+  accountName   String
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
   // FK
   supplierId Int?
+  bankId     Int?
 
   // BelongsTo
   supplier Supplier? @relation(fields: [supplierId], references: [id])
+  bank     Bank?      @relation(fields: [bankId], references: [id])
 }
 
 model Supplier {
@@ -182,8 +201,8 @@ model Supplier {
   deletedAt DateTime?
 
   // HasMany
-  banks  Bank[]
-  assets Asset[]
+  bankAccounts BankAccount[]
+  assets       Asset[]
 }
 
 model Asset {
@@ -215,7 +234,7 @@ model Asset {
   deviceModel DeviceModel? @relation(fields: [deviceModelId], references: [id])
   deviceType  DeviceType?  @relation(fields: [deviceTypeId], references: [id])
   supplier    Supplier?    @relation(fields: [supplierId], references: [id])
-  department  Department? @relation(fields: [departmentId], references: [id])
-  office      Office?     @relation(fields: [officeId], references: [id])
-  user        User?       @relation(fields: [userId], references: [id])
+  department  Department?  @relation(fields: [departmentId], references: [id])
+  office      Office?      @relation(fields: [officeId], references: [id])
+  user        User?        @relation(fields: [userId], references: [id])
 }

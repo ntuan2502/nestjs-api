@@ -11,8 +11,9 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { DepartmentsModule } from './departments/departments.module';
 import { DeviceTypesModule } from './device-types/device-types.module';
 import { DeviceModelsModule } from './device-models/device-models.module';
-import { BanksModule } from './banks/banks.module';
+import { BankAccountsModule } from './bank-accounts/bank-accounts.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
+import { BanksModule } from './banks/banks.module';
 
 @Module({
   imports: [
@@ -26,8 +27,9 @@ import { SuppliersModule } from './suppliers/suppliers.module';
     DepartmentsModule,
     DeviceTypesModule,
     DeviceModelsModule,
-    BanksModule,
+    BankAccountsModule,
     SuppliersModule,
+    BanksModule,
   ],
   controllers: [AppController],
   providers: [

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { parseInclude } from 'src/common/utils/parseInclude';
 
 @Injectable()
 export class SuppliersService {
@@ -29,10 +30,11 @@ export class SuppliersService {
     };
   }
 
-  async findAll() {
+  async findAll(includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const suppliers = await this.prisma.supplier.findMany({
       where: { deletedAt: null },
-      include: { banks: true },
+      include,
     });
 
     return {
@@ -44,7 +46,11 @@ export class SuppliersService {
   async findOne(id: number) {
     const supplier = await this.prisma.supplier.findFirst({
       where: { id, deletedAt: null },
-      include: { banks: true },
+      include: {
+        bankAccounts: {
+          include: { bank: true },
+        },
+      },
     });
 
     if (!supplier) {
@@ -69,6 +75,11 @@ export class SuppliersService {
     const updatedSupplier = await this.prisma.supplier.update({
       where: { id },
       data: updateSupplierDto,
+      include: {
+        bankAccounts: {
+          include: { bank: true },
+        },
+      },
     });
 
     return {

@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateBankDto } from './dto/create-bank.dto';
 import { UpdateBankDto } from './dto/update-bank.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -12,15 +8,13 @@ export class BanksService {
   constructor(private prisma: PrismaService) {}
 
   async create(createBankDto: CreateBankDto) {
-    const { name, accountNumber } = createBankDto;
+    const { name } = createBankDto;
     const existingBank = await this.prisma.bank.findFirst({
-      where: { name, accountNumber, deletedAt: null },
+      where: { name, deletedAt: null },
     });
 
     if (existingBank) {
-      throw new BadRequestException(
-        `Bank with name ${name} and account number ${accountNumber} already exists`,
-      );
+      throw new BadRequestException(`Bank with name ${name} already exists`);
     }
 
     const bank = await this.prisma.bank.create({
@@ -36,7 +30,7 @@ export class BanksService {
   async findAll() {
     const banks = await this.prisma.bank.findMany({
       where: { deletedAt: null },
-      include: { supplier: true },
+      include: { bankAccounts: true },
     });
 
     return {
@@ -48,11 +42,11 @@ export class BanksService {
   async findOne(id: number) {
     const bank = await this.prisma.bank.findFirst({
       where: { id, deletedAt: null },
-      include: { supplier: true },
+      include: { bankAccounts: true },
     });
 
     if (!bank) {
-      throw new NotFoundException(`Bank with ID ${id} not found`);
+      throw new BadRequestException(`Bank with ID ${id} not found`);
     }
 
     return {
@@ -62,22 +56,23 @@ export class BanksService {
   }
 
   async update(id: number, updateBankDto: UpdateBankDto) {
-    const bank = await this.prisma.bank.findFirst({
-      where: { id, deletedAt: null },
+    const { name } = updateBankDto;
+    const existingBank = await this.prisma.bank.findFirst({
+      where: { name, deletedAt: null },
     });
 
-    if (!bank) {
-      throw new NotFoundException(`Bank with ID ${id} not found`);
+    if (existingBank) {
+      throw new BadRequestException(`Bank with name ${name} already exists`);
     }
 
-    const updatedBank = await this.prisma.bank.update({
+    const bank = await this.prisma.bank.update({
       where: { id },
       data: updateBankDto,
     });
 
     return {
       message: 'Bank updated successfully',
-      bank: updatedBank,
+      bank,
     };
   }
 
@@ -87,7 +82,7 @@ export class BanksService {
     });
 
     if (!bank) {
-      throw new NotFoundException(`Bank with ID ${id} not found`);
+      throw new BadRequestException(`Bank with ID ${id} not found`);
     }
 
     await this.prisma.bank.update({
@@ -96,7 +91,7 @@ export class BanksService {
     });
 
     return {
-      message: 'Bank removed successfully',
+      message: 'Bank deleted successfully',
     };
   }
 }

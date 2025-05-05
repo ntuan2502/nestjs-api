@@ -96,7 +96,7 @@ export const deviceModels = [
   { name: 'HP P2055D' },
   { name: 'HP Pavilion 14-dv0000' },
   { name: 'HP Pavilion Laptop 15-eg0xxx' },
-  { name: 'Hp ProBook 440 G3' },
+  { name: 'HP ProBook 440 G3' },
   { name: 'HP ProBook 450 G3' },
   { name: 'HP ProDesk 800 G2' },
   { name: 'IBM Server X3650M4' },

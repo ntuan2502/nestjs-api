@@ -6,6 +6,7 @@ import {
 import { CreateBankAccountDto } from './dto/create-bank-account.dto';
 import { UpdateBankAccountDto } from './dto/update-bank-account.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { parseInclude } from 'src/common/utils/parseInclude';
 
 @Injectable()
 export class BankAccountsService {
@@ -33,10 +34,11 @@ export class BankAccountsService {
     };
   }
 
-  async findAll() {
+  async findAll(includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const bankAccounts = await this.prisma.bankAccount.findMany({
       where: { deletedAt: null },
-      include: { supplier: true, bank: true },
+      include,
     });
 
     return {
@@ -45,10 +47,11 @@ export class BankAccountsService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const bankAccount = await this.prisma.bankAccount.findFirst({
       where: { id, deletedAt: null },
-      include: { supplier: true, bank: true },
+      include,
     });
 
     if (!bankAccount) {

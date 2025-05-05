@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { DeviceTypesService } from './device-types.service';
 import { CreateDeviceTypeDto } from './dto/create-device-type.dto';
@@ -21,13 +22,16 @@ export class DeviceTypesController {
   }
 
   @Get()
-  findAll() {
-    return this.deviceTypesService.findAll();
+  findAll(@Query('include') include?: string | string[]) {
+    return this.deviceTypesService.findAll(include);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.deviceTypesService.findOne(+id);
+  findOne(
+    @Param('id') id: string,
+    @Query('include') include?: string | string[],
+  ) {
+    return this.deviceTypesService.findOne(+id, include);
   }
 
   @Patch(':id')

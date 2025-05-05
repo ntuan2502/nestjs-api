@@ -8,6 +8,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { omitFields } from 'src/common/utils/omit';
+import { parseInclude } from 'src/common/utils/parseInclude';
 
 @Injectable()
 export class UsersService {
@@ -37,10 +38,11 @@ export class UsersService {
     return omitFields(user, ['password']);
   }
 
-  async findAll() {
+  async findAll(includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const users = await this.prisma.user.findMany({
       where: { deletedAt: null },
-      include: { office: true, department: true },
+      include,
     });
 
     return users.map((user) => {
@@ -48,14 +50,15 @@ export class UsersService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     if (id <= 0) {
       throw new BadRequestException('ID must be a positive number');
     }
 
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
-      include: { office: true, department: true },
+      include,
     });
 
     if (!user) {

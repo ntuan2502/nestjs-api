@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateDeviceTypeDto } from './dto/create-device-type.dto';
 import { UpdateDeviceTypeDto } from './dto/update-device-type.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { parseInclude } from 'src/common/utils/parseInclude';
 
 @Injectable()
 export class DeviceTypesService {
@@ -29,10 +30,11 @@ export class DeviceTypesService {
     };
   }
 
-  async findAll() {
+  async findAll(includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const deviceTypes = await this.prisma.deviceType.findMany({
       where: { deletedAt: null },
-      include: { deviceModels: true, assets: true },
+      include,
     });
 
     return {
@@ -41,10 +43,11 @@ export class DeviceTypesService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const deviceType = await this.prisma.deviceType.findFirst({
       where: { id, deletedAt: null },
-      include: { deviceModels: true, assets: true },
+      include,
     });
 
     if (!deviceType) {

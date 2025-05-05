@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
@@ -21,13 +22,16 @@ export class DepartmentsController {
   }
 
   @Get()
-  findAll() {
-    return this.departmentsService.findAll();
+  findAll(@Query('include') include?: string | string[]) {
+    return this.departmentsService.findAll(include);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.departmentsService.findOne(+id);
+  findOne(
+    @Param('id') id: string,
+    @Query('include') include?: string | string[],
+  ) {
+    return this.departmentsService.findOne(+id, include);
   }
 
   @Patch(':id')

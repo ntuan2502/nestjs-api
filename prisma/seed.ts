@@ -1,6 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { offices, departments, users, deviceTypes, deviceModels } from './data';
+import {
+  offices,
+  departments,
+  users,
+  deviceTypes,
+  deviceModels,
+  // ACBHs,
+  // ACHLs,
+  // ACLTs,
+  // ATLTs,
+  AITAMs,
+} from './data';
 
 const prisma = new PrismaClient();
 
@@ -106,7 +117,7 @@ async function seedDeviceTypes() {
 
 async function seedDeviceModels() {
   try {
-    // await prisma.$executeRaw`TRUNCATE TABLE "DeviceModels" RESTART IDENTITY CASCADE`;
+    // await prisma.$executeRaw`TRUNCATE TABLE "DeviceModel" RESTART IDENTITY CASCADE`;
     // console.log('✅ Cleared existing device models and reset IDs');
 
     for (let i = 0; i < deviceModels.length; i++) {
@@ -128,6 +139,100 @@ async function seedDeviceModels() {
   }
 }
 
+async function seedAssets() {
+  // await prisma.$executeRaw`TRUNCATE TABLE "Asset" RESTART IDENTITY CASCADE`;
+  // console.log('✅ Cleared existing assets and reset IDs');
+  // const officeId = 2;
+  const dataArrays = AITAMs;
+
+  try {
+    for (let i = 0; i < dataArrays.length; i++) {
+      const dataItem = dataArrays[i];
+
+      const deviceModelId = await prisma.deviceModel.findUnique({
+        where: { name: dataItem.device_model.name.trim() },
+        select: {
+          id: true,
+        },
+      });
+      const deviceTypeId = await prisma.deviceType.findUnique({
+        where: { name: dataItem.device_type.name },
+        select: {
+          id: true,
+        },
+      });
+      const userId = await prisma.user.findUnique({
+        where: { email: dataItem.employee.email },
+        select: {
+          id: true,
+        },
+      });
+
+      let warrantyDuration = '1';
+      if (dataItem.warranty_duration == 'one year') {
+        warrantyDuration = '1';
+      } else if (dataItem.warranty_duration == 'two years') {
+        warrantyDuration = '2';
+      } else if (dataItem.warranty_duration == 'three years') {
+        warrantyDuration = '3';
+      } else if (dataItem.warranty_duration == 'four years') {
+        warrantyDuration = '4';
+      } else if (dataItem.warranty_duration == 'five years') {
+        warrantyDuration = '5';
+      } else {
+        warrantyDuration = '3';
+      }
+
+      await prisma.asset.upsert({
+        where: { internalCode: dataItem.code },
+        update: {
+          internalCode: dataItem.code,
+          serialNumber: dataItem.serial_number,
+          purchaseDate: new Date(dataItem.purchase_date),
+          warrantyDuration,
+          status: dataItem.device_status,
+          customProperties: {
+            macAddress: dataItem.mac_address,
+            cpu: dataItem.cpu,
+            ram: dataItem.ram,
+            hardDrive: dataItem.hard_drive,
+            osType: dataItem.os_type,
+          },
+          deviceModelId: deviceModelId?.id,
+          deviceTypeId: deviceTypeId?.id,
+          userId: userId?.id,
+          // officeId,
+        },
+        create: {
+          internalCode: dataItem.code,
+          serialNumber: dataItem.serial_number,
+          purchaseDate: new Date(dataItem.purchase_date),
+          warrantyDuration,
+          status: dataItem.device_status,
+          customProperties: {
+            macAddress: dataItem.mac_address,
+            cpu: dataItem.cpu,
+            ram: dataItem.ram,
+            hardDrive: dataItem.hard_drive,
+            osType: dataItem.os_type,
+          },
+          deviceModelId: deviceModelId?.id,
+          deviceTypeId: deviceTypeId?.id,
+          userId: userId?.id,
+          // officeId,
+        },
+      });
+      console.log(
+        `Seeded asset ${i + 1}/${dataArrays.length}: ${dataItem.code}`,
+      );
+    }
+
+    console.log('✅ Device asset seeding completed!');
+  } catch (error) {
+    console.error('❌ Error seeding device assets:', error);
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -141,6 +246,8 @@ async function main() {
     await seedDeviceTypes();
   } else if (args.includes('--device-model')) {
     await seedDeviceModels();
+  } else if (args.includes('--asset')) {
+    await seedAssets();
   } else {
     console.log('Please specify a seed type. Available options:');
     console.log('  bun run seed --office');
@@ -148,6 +255,7 @@ async function main() {
     console.log('  bun run seed --user');
     console.log('  bun run seed --device-type');
     console.log('  bun run seed --device-model');
+    console.log('  bun run seed --asset');
     process.exit(1);
   }
 }

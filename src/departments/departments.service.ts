@@ -6,6 +6,7 @@ import {
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { parseInclude } from 'src/common/utils/parseInclude';
 
 @Injectable()
 export class DepartmentsService {
@@ -32,10 +33,11 @@ export class DepartmentsService {
     };
   }
 
-  async findAll() {
+  async findAll(includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const departments = await this.prisma.department.findMany({
       where: { deletedAt: null },
-      include: { users: true },
+      include,
     });
 
     return {
@@ -44,10 +46,11 @@ export class DepartmentsService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const department = await this.prisma.department.findFirst({
       where: { id, deletedAt: null },
-      include: { users: true },
+      include,
     });
 
     if (!department) {

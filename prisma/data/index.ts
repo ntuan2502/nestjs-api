@@ -3,3 +3,8 @@ export * from './department';
 export * from './user';
 export * from './device-type';
 export * from './device-model';
+export * from './ACBH';
+export * from './ACHL';
+export * from './ACLT';
+export * from './ATLT';
+export * from './AITAM';

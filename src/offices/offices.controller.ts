@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { OfficesService } from './offices.service';
 import { CreateOfficeDto } from './dto/create-office.dto';
@@ -22,13 +23,16 @@ export class OfficesController {
   }
 
   @Get()
-  findAll() {
-    return this.officesService.findAll();
+  findAll(@Query('include') include?: string | string[]) {
+    return this.officesService.findAll(include);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.officesService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('include') include?: string | string[],
+  ) {
+    return this.officesService.findOne(id, include);
   }
 
   @Patch(':id')

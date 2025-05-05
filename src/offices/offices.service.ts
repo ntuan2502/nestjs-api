@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOfficeDto } from './dto/create-office.dto';
 import { UpdateOfficeDto } from './dto/update-office.dto';
+import { parseInclude } from 'src/common/utils/parseInclude';
 
 @Injectable()
 export class OfficesService {
@@ -28,10 +29,11 @@ export class OfficesService {
     };
   }
 
-  async findAll() {
+  async findAll(includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const offices = await this.prisma.office.findMany({
       where: { deletedAt: null },
-      include: { users: true, assets: true },
+      include,
     });
 
     return {
@@ -40,10 +42,11 @@ export class OfficesService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const office = await this.prisma.office.findFirst({
       where: { id, deletedAt: null },
-      include: { users: true, assets: true },
+      include,
     });
 
     if (!office) {

@@ -14,6 +14,7 @@ import { DeviceModelsModule } from './device-models/device-models.module';
 import { BankAccountsModule } from './bank-accounts/bank-accounts.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { BanksModule } from './banks/banks.module';
+import { AssetsModule } from './assets/assets.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { BanksModule } from './banks/banks.module';
     BankAccountsModule,
     SuppliersModule,
     BanksModule,
+    AssetsModule,
   ],
   controllers: [AppController],
   providers: [

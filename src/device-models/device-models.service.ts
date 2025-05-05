@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateDeviceModelDto } from './dto/create-device-model.dto';
 import { UpdateDeviceModelDto } from './dto/update-device-model.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { parseInclude } from 'src/common/utils/parseInclude';
 
 @Injectable()
 export class DeviceModelsService {
@@ -31,10 +32,11 @@ export class DeviceModelsService {
     };
   }
 
-  async findAll() {
+  async findAll(includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const deviceModels = await this.prisma.deviceModel.findMany({
       where: { deletedAt: null },
-      include: { deviceType: true, assets: true },
+      include,
     });
 
     return {
@@ -43,10 +45,11 @@ export class DeviceModelsService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const deviceModel = await this.prisma.deviceModel.findFirst({
       where: { id, deletedAt: null },
-      include: { deviceType: true, assets: true },
+      include,
     });
 
     if (!deviceModel) {

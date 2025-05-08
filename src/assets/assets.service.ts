@@ -3,6 +3,7 @@ import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { parseInclude } from 'src/common/utils/parseInclude';
+import { parseFilter } from 'src/common/utils/parseFilter';
 
 @Injectable()
 export class AssetsService {
@@ -30,11 +31,13 @@ export class AssetsService {
     };
   }
 
-  async findAll(includeParam?: string | string[]) {
+  async findAll(includeParam?: string | string[], filter?: string | string[]) {
     const include = parseInclude(includeParam);
+    const filterWhere = parseFilter(filter);
     const assets = await this.prisma.asset.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, ...filterWhere },
       include,
+      orderBy: { id: 'asc' },
     });
 
     return {

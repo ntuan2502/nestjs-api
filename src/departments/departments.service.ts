@@ -38,6 +38,7 @@ export class DepartmentsService {
     const departments = await this.prisma.department.findMany({
       where: { deletedAt: null },
       include,
+      orderBy: { id: 'asc' },
     });
 
     return {

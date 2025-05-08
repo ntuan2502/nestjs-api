@@ -37,6 +37,7 @@ export class DeviceModelsService {
     const deviceModels = await this.prisma.deviceModel.findMany({
       where: { deletedAt: null },
       include,
+      orderBy: { id: 'asc' },
     });
 
     return {

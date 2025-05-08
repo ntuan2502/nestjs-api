@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateDeviceTypeDto } from './dto/create-device-type.dto';
 import { UpdateDeviceTypeDto } from './dto/update-device-type.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -17,7 +21,9 @@ export class DeviceTypesService {
     });
 
     if (existingDeviceType) {
-      throw new NotFoundException('Device type with this name already exists');
+      throw new BadRequestException(
+        'Device type with this name already exists',
+      );
     }
 
     const deviceType = await this.prisma.deviceType.create({
@@ -35,6 +41,7 @@ export class DeviceTypesService {
     const deviceTypes = await this.prisma.deviceType.findMany({
       where: { deletedAt: null },
       include,
+      orderBy: { id: 'asc' },
     });
 
     return {

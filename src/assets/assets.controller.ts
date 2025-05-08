@@ -22,8 +22,11 @@ export class AssetsController {
   }
 
   @Get()
-  findAll(@Query('include') include?: string | string[]) {
-    return this.assetsService.findAll(include);
+  findAll(
+    @Query('include') include?: string | string[],
+    @Query('filter') filter?: string | string[],
+  ) {
+    return this.assetsService.findAll(include, filter);
   }
 
   @Get(':id')

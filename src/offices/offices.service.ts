@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOfficeDto } from './dto/create-office.dto';
 import { UpdateOfficeDto } from './dto/update-office.dto';
@@ -14,7 +18,7 @@ export class OfficesService {
     });
 
     if (existingOffice) {
-      throw new NotFoundException(
+      throw new BadRequestException(
         `Office with taxCode ${createOfficeDto.taxCode} already exists`,
       );
     }
@@ -34,6 +38,7 @@ export class OfficesService {
     const offices = await this.prisma.office.findMany({
       where: { deletedAt: null },
       include,
+      orderBy: { id: 'asc' },
     });
 
     return {
@@ -68,15 +73,21 @@ export class OfficesService {
       throw new NotFoundException(`Office with ID ${id} not found`);
     }
 
-    const updateOffice = await this.prisma.office.update({
-      where: { id },
-      data: updateOfficeDto,
-    });
-
-    return {
-      message: 'Office updated successfully',
-      office: updateOffice,
-    };
+    try {
+      const updateOffice = await this.prisma.office.update({
+        where: { id },
+        data: updateOfficeDto,
+      });
+      return {
+        message: 'Office updated successfully',
+        office: updateOffice,
+      };
+    } catch (e) {
+      console.log(e);
+      throw new BadRequestException(
+        `Office with name ${updateOfficeDto.name} or tax code ${updateOfficeDto.taxCode} already exists`,
+      );
+    }
   }
 
   async remove(id: number) {

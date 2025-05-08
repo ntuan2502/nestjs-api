@@ -43,18 +43,19 @@ export class UsersService {
     const users = await this.prisma.user.findMany({
       where: { deletedAt: null },
       include,
+      orderBy: { id: 'asc' },
     });
 
-    return users.map((user) => {
-      return omitFields(user, ['password']);
-    });
+    return {
+      message: 'Users fetched successfully',
+      users: users.map((user) => {
+        return omitFields(user, ['password']);
+      }),
+    };
   }
 
   async findOne(id: number, includeParam?: string | string[]) {
     const include = parseInclude(includeParam);
-    if (id <= 0) {
-      throw new BadRequestException('ID must be a positive number');
-    }
 
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
@@ -65,14 +66,13 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    return omitFields(user, ['password']);
+    return {
+      message: 'User fetched successfully',
+      user: omitFields(user, ['password']),
+    };
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
-    if (id <= 0) {
-      throw new BadRequestException('ID must be a positive number');
-    }
-
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
     });
@@ -81,7 +81,7 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    const { password, email, ...rest } = updateUserDto;
+    const { email, ...rest } = updateUserDto;
 
     if (email && email !== user.email) {
       const existingUser = await this.prisma.user.findFirst({
@@ -93,9 +93,7 @@ export class UsersService {
       }
     }
 
-    const data = password
-      ? { ...rest, email, password: await bcrypt.hash(password, 10) }
-      : { ...rest, email };
+    const data = { ...rest, email };
 
     return this.prisma.user.update({
       where: { id },

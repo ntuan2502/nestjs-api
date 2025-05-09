@@ -31,7 +31,7 @@ export class BanksService {
     const banks = await this.prisma.bank.findMany({
       where: { deletedAt: null },
       include: { bankAccounts: true },
-      orderBy: { id: 'asc' },
+      orderBy: { name: 'asc' },
     });
 
     return {

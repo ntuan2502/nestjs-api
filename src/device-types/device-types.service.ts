@@ -41,7 +41,7 @@ export class DeviceTypesService {
     const deviceTypes = await this.prisma.deviceType.findMany({
       where: { deletedAt: null },
       include,
-      orderBy: { id: 'asc' },
+      orderBy: { name: 'asc' },
     });
 
     return {

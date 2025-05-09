@@ -43,7 +43,7 @@ export class UsersService {
     const users = await this.prisma.user.findMany({
       where: { deletedAt: null },
       include,
-      orderBy: { id: 'asc' },
+      orderBy: { name: 'asc' },
     });
 
     return {

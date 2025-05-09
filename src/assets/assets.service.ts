@@ -37,7 +37,7 @@ export class AssetsService {
     const assets = await this.prisma.asset.findMany({
       where: { deletedAt: null, ...filterWhere },
       include,
-      orderBy: { id: 'asc' },
+      orderBy: { internalCode: 'asc' },
     });
 
     return {

@@ -35,7 +35,7 @@ export class SuppliersService {
     const suppliers = await this.prisma.supplier.findMany({
       where: { deletedAt: null },
       include,
-      orderBy: { id: 'asc' },
+      orderBy: { name: 'asc' },
     });
 
     return {

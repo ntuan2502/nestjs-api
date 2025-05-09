@@ -38,7 +38,7 @@ export class OfficesService {
     const offices = await this.prisma.office.findMany({
       where: { deletedAt: null },
       include,
-      orderBy: { id: 'asc' },
+      orderBy: { name: 'asc' },
     });
 
     return {

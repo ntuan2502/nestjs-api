@@ -69,7 +69,7 @@ export class AssetsService {
       where: { internalCode, deletedAt: null },
     });
 
-    if (existingAsset) {
+    if (existingAsset?.internalCode !== internalCode) {
       throw new BadRequestException(
         `Asset with internal code ${internalCode} already exists`,
       );

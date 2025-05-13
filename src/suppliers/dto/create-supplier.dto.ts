@@ -1,19 +1,19 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateSupplierDto {
-  @IsString({ message: 'Name must be a string' })
-  @MinLength(1, { message: 'Name must not be empty' })
+  @IsString({ message: 'name must be a string' })
+  @MinLength(1, { message: 'name must not be empty' })
   name: string;
 
-  @IsString({ message: 'Address must be a string' })
-  @MinLength(1, { message: 'Address must not be empty' })
-  address: string;
+  @IsOptional()
+  @IsString({ message: 'address must be a string' })
+  address?: string;
 
-  @IsString({ message: 'Tax code must be a string' })
-  @MinLength(1, { message: 'Tax code must not be empty' })
+  @IsString({ message: 'taxCode must be a string' })
+  @MinLength(1, { message: 'taxCode must not be empty' })
   taxCode: string;
 
-  @IsString({ message: 'Phone must be a string' })
-  @MinLength(1, { message: 'Phone must not be empty' })
-  phone: string;
+  @IsOptional()
+  @IsString({ message: 'phone must be a string' })
+  phone?: string;
 }

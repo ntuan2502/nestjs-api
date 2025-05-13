@@ -22,13 +22,16 @@ export class SuppliersController {
   }
 
   @Get()
-  findAll(@Query('include') include?: string | string[]) {
-    return this.suppliersService.findAll(include);
+  findAll(@Query('include') includeParam?: string | string[]) {
+    return this.suppliersService.findAll(includeParam);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.suppliersService.findOne(+id);
+  findOne(
+    @Param('id') id: string,
+    @Query('include') includeParam?: string | string[],
+  ) {
+    return this.suppliersService.findOne(id, includeParam);
   }
 
   @Patch(':id')
@@ -36,11 +39,11 @@ export class SuppliersController {
     @Param('id') id: string,
     @Body() updateSupplierDto: UpdateSupplierDto,
   ) {
-    return this.suppliersService.update(+id, updateSupplierDto);
+    return this.suppliersService.update(id, updateSupplierDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.suppliersService.remove(+id);
+    return this.suppliersService.remove(id);
   }
 }

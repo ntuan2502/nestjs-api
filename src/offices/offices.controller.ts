@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  ParseIntPipe,
   Query,
 } from '@nestjs/common';
 import { OfficesService } from './offices.service';
@@ -23,28 +22,25 @@ export class OfficesController {
   }
 
   @Get()
-  findAll(@Query('include') include?: string | string[]) {
-    return this.officesService.findAll(include);
+  findAll(@Query('include') includeParam?: string | string[]) {
+    return this.officesService.findAll(includeParam);
   }
 
   @Get(':id')
   findOne(
-    @Param('id', ParseIntPipe) id: number,
-    @Query('include') include?: string | string[],
+    @Param('id') id: string,
+    @Query('include') includeParam?: string | string[],
   ) {
-    return this.officesService.findOne(id, include);
+    return this.officesService.findOne(id, includeParam);
   }
 
   @Patch(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateOfficeDto: UpdateOfficeDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateOfficeDto: UpdateOfficeDto) {
     return this.officesService.update(id, updateOfficeDto);
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id') id: string) {
     return this.officesService.remove(id);
   }
 }

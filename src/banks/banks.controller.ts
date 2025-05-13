@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { BanksService } from './banks.service';
 import { CreateBankDto } from './dto/create-bank.dto';
@@ -21,22 +22,25 @@ export class BanksController {
   }
 
   @Get()
-  findAll() {
-    return this.banksService.findAll();
+  findAll(@Query('include') includeParam?: string | string[]) {
+    return this.banksService.findAll(includeParam);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.banksService.findOne(+id);
+  findOne(
+    @Param('id') id: string,
+    @Query('include') includeParam?: string | string[],
+  ) {
+    return this.banksService.findOne(id, includeParam);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateBankDto: UpdateBankDto) {
-    return this.banksService.update(+id, updateBankDto);
+    return this.banksService.update(id, updateBankDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.banksService.remove(+id);
+    return this.banksService.remove(id);
   }
 }

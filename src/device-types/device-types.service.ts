@@ -13,16 +13,17 @@ export class DeviceTypesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createDeviceTypeDto: CreateDeviceTypeDto) {
+    const { name } = createDeviceTypeDto;
     const existingDeviceType = await this.prisma.deviceType.findFirst({
       where: {
-        name: createDeviceTypeDto.name,
+        name,
         deletedAt: null,
       },
     });
 
     if (existingDeviceType) {
       throw new BadRequestException(
-        'Device type with this name already exists',
+        `Device type with name ${name} already exists`,
       );
     }
 
@@ -50,7 +51,7 @@ export class DeviceTypesService {
     };
   }
 
-  async findOne(id: number, includeParam?: string | string[]) {
+  async findOne(id: string, includeParam?: string | string[]) {
     const include = parseInclude(includeParam);
     const deviceType = await this.prisma.deviceType.findFirst({
       where: { id, deletedAt: null },
@@ -58,7 +59,7 @@ export class DeviceTypesService {
     });
 
     if (!deviceType) {
-      throw new NotFoundException(`DeviceType with ID ${id} not found`);
+      throw new NotFoundException(`DeviceType with id ${id} not found`);
     }
 
     return {
@@ -67,13 +68,28 @@ export class DeviceTypesService {
     };
   }
 
-  async update(id: number, updateDeviceTypeDto: UpdateDeviceTypeDto) {
+  async update(id: string, updateDeviceTypeDto: UpdateDeviceTypeDto) {
     const deviceType = await this.prisma.deviceType.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!deviceType) {
-      throw new NotFoundException(`DeviceType with ID ${id} not found`);
+      throw new NotFoundException(`DeviceType with id ${id} not found`);
+    }
+
+    const { name } = updateDeviceTypeDto;
+    if (name !== deviceType.name) {
+      const existingDeviceType = await this.prisma.deviceType.findFirst({
+        where: {
+          name,
+          deletedAt: null,
+        },
+      });
+      if (existingDeviceType) {
+        throw new BadRequestException(
+          `Device type with name ${name} already exists`,
+        );
+      }
     }
 
     const updatedDeviceType = await this.prisma.deviceType.update({
@@ -87,13 +103,13 @@ export class DeviceTypesService {
     };
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     const deviceType = await this.prisma.deviceType.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!deviceType) {
-      throw new NotFoundException(`DeviceType with ID ${id} not found`);
+      throw new NotFoundException(`DeviceType with id ${id} not found`);
     }
 
     await this.prisma.deviceType.update({

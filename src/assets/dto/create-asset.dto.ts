@@ -1,24 +1,23 @@
+import { WarrantyYear } from '@prisma/client';
 import { Type } from 'class-transformer';
 import { IsObject, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateAssetDto {
-  @IsString({ message: 'Account name must be a string' })
-  @MinLength(1, { message: 'Account number must not be empty' })
+  @IsString({ message: 'internalCode must be a string' })
+  @MinLength(1, { message: 'internalCode must not be empty' })
   internalCode: string;
 
-  @IsString({ message: 'Account number must be a string' })
-  @MinLength(1, { message: 'Account number must not be empty' })
-  serialNumber: string;
+  @IsOptional()
+  @IsString({ message: 'serialNumber must be a string' })
+  serialNumber?: string;
 
-  @IsString({ message: 'Purchase date must be a string' })
-  purchaseDate: Date;
+  @IsOptional()
+  @IsString({ message: 'purchaseDate must be a string' })
+  purchaseDate?: Date;
 
-  @IsString({ message: 'Warranty until must be a string' })
-  warrantyDuration: string;
-
-  @IsString({ message: 'Status must be a string' })
-  @MinLength(1, { message: 'Status must not be empty' })
-  status: string;
+  @IsOptional()
+  @IsString({ message: 'warrantyYears must be a string' })
+  warrantyYears?: WarrantyYear;
 
   @IsOptional()
   @IsObject({ message: 'customProperties must be a valid JSON object' })
@@ -26,15 +25,14 @@ export class CreateAssetDto {
   customProperties?: Record<string, any>;
 
   @IsOptional()
-  deviceModelId?: number;
+  @IsString({ message: 'deviceModelId must be a string' })
+  deviceModelId?: string;
+
   @IsOptional()
-  deviceTypeId?: number;
+  @IsString({ message: 'deviceTypeId must be a string' })
+  deviceTypeId?: string;
+
   @IsOptional()
-  supplierId?: number;
-  @IsOptional()
-  departmentId?: number;
-  @IsOptional()
-  officeId?: number;
-  @IsOptional()
-  userId?: number;
+  @IsString({ message: 'supplierId must be a string' })
+  supplierId?: string;
 }

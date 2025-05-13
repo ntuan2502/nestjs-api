@@ -4,11 +4,18 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { join } from 'path';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
+
+  app.use(
+    '/public/uploads',
+    express.static(join(process.cwd(), 'public', 'uploads')),
+  );
 
   app.enableCors({
     origin: ['http://localhost:3000', 'https://next.tun.io.vn'],

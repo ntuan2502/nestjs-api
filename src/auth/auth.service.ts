@@ -15,6 +15,7 @@ import { Request } from 'express';
 import { omitFields } from 'src/common/utils/omit';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Injectable()
 export class AuthService {
@@ -63,7 +64,7 @@ export class AuthService {
     }
   }
 
-  async login(loginDto: LoginDto, req: Request) {
+  async login(req: Request, loginDto: LoginDto) {
     const { email, password } = loginDto;
     const userAgent = req.headers['user-agent'];
 
@@ -105,7 +106,7 @@ export class AuthService {
         refreshTokenExpiresAt,
         isActive: true,
         ipAddress,
-        userAgent,
+        userAgent: userAgent || 'unknown',
       },
     });
 
@@ -117,7 +118,7 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshTokenDto: RefreshTokenDto, req: Request) {
+  async refresh(req: Request, refreshTokenDto: RefreshTokenDto) {
     const { refreshToken } = refreshTokenDto;
 
     const session = await this.prisma.session.findUnique({
@@ -188,7 +189,12 @@ export class AuthService {
     };
   }
 
-  async logout(accessToken: string) {
+  async logout(req: AuthRequest) {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) {
+      throw new UnauthorizedException('No accessToken provided');
+    }
+
     const session = await this.prisma.session.findUnique({
       where: { accessToken },
     });
@@ -205,7 +211,7 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
-  async logoutSession(userId: number, accessToken: string) {
+  async logoutSession(userId: string, accessToken: string) {
     const session = await this.prisma.session.findFirst({
       where: {
         accessToken,
@@ -231,7 +237,8 @@ export class AuthService {
     return { message: `Logged out successfully` };
   }
 
-  async logoutAll(userId: number) {
+  async logoutAll(req: AuthRequest) {
+    const userId = req.user.sub;
     const activeSessions = await this.prisma.session.findMany({
       where: { userId, isActive: true },
     });
@@ -248,7 +255,8 @@ export class AuthService {
     return { message: `Logged out ${activeSessions.length} active sessions` };
   }
 
-  async getSessions(userId: number) {
+  async getSessions(req: AuthRequest) {
+    const userId = req.user.sub;
     const sessions = await this.prisma.session.findMany({
       where: { userId },
       orderBy: {
@@ -262,7 +270,8 @@ export class AuthService {
     };
   }
 
-  async getProfile(userId: number) {
+  async getProfile(req: AuthRequest) {
+    const userId = req.user.sub;
     const user = await this.prisma.user.findFirst({
       where: { id: userId, deletedAt: null },
       include: {
@@ -281,7 +290,8 @@ export class AuthService {
     };
   }
 
-  async updateProfile(updateProfileDto: UpdateProfileDto, userId: number) {
+  async updateProfile(req: AuthRequest, updateProfileDto: UpdateProfileDto) {
+    const userId = req.user.sub;
     const { name, gender, dob, phone, address, avatar } = updateProfileDto;
 
     const user = await this.prisma.user.findFirst({
@@ -312,7 +322,8 @@ export class AuthService {
     };
   }
 
-  async changePassword(changePasswordDto: ChangePasswordDto, userId: number) {
+  async changePassword(req: AuthRequest, changePasswordDto: ChangePasswordDto) {
+    const userId = req.user.sub;
     const { oldPassword, newPassword } = changePasswordDto;
 
     const user = await this.prisma.user.findFirst({

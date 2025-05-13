@@ -13,13 +13,14 @@ export class OfficesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createOfficeDto: CreateOfficeDto) {
+    const { taxCode } = createOfficeDto;
     const existingOffice = await this.prisma.office.findFirst({
-      where: { taxCode: createOfficeDto.taxCode, deletedAt: null },
+      where: { taxCode, deletedAt: null },
     });
 
     if (existingOffice) {
       throw new BadRequestException(
-        `Office with taxCode ${createOfficeDto.taxCode} already exists`,
+        `Office with taxCode ${taxCode} already exists`,
       );
     }
 
@@ -47,7 +48,7 @@ export class OfficesService {
     };
   }
 
-  async findOne(id: number, includeParam?: string | string[]) {
+  async findOne(id: string, includeParam?: string | string[]) {
     const include = parseInclude(includeParam);
     const office = await this.prisma.office.findFirst({
       where: { id, deletedAt: null },
@@ -55,7 +56,7 @@ export class OfficesService {
     });
 
     if (!office) {
-      throw new NotFoundException(`Office with ID ${id} not found`);
+      throw new NotFoundException(`Office with id ${id} not found`);
     }
 
     return {
@@ -64,39 +65,45 @@ export class OfficesService {
     };
   }
 
-  async update(id: number, updateOfficeDto: UpdateOfficeDto) {
+  async update(id: string, updateOfficeDto: UpdateOfficeDto) {
     const office = await this.prisma.office.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!office) {
-      throw new NotFoundException(`Office with ID ${id} not found`);
+      throw new NotFoundException(`Office with id ${id} not found`);
     }
 
-    try {
-      const updateOffice = await this.prisma.office.update({
-        where: { id },
-        data: updateOfficeDto,
+    const { taxCode } = updateOfficeDto;
+
+    if (taxCode !== office.taxCode) {
+      const existingOffice = await this.prisma.office.findFirst({
+        where: { taxCode, deletedAt: null },
       });
-      return {
-        message: 'Office updated successfully',
-        office: updateOffice,
-      };
-    } catch (e) {
-      console.log(e);
-      throw new BadRequestException(
-        `Office with name ${updateOfficeDto.name} or tax code ${updateOfficeDto.taxCode} already exists`,
-      );
+      if (existingOffice) {
+        throw new BadRequestException(
+          `Office with taxCode ${taxCode} already exists`,
+        );
+      }
     }
+
+    const updateOffice = await this.prisma.office.update({
+      where: { id },
+      data: updateOfficeDto,
+    });
+    return {
+      message: 'Office updated successfully',
+      office: updateOffice,
+    };
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     const office = await this.prisma.office.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!office) {
-      throw new NotFoundException(`Office with ID ${id} not found`);
+      throw new NotFoundException(`Office with id ${id} not found`);
     }
 
     await this.prisma.office.update({

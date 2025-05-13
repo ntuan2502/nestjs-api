@@ -15,6 +15,7 @@ import { BankAccountsModule } from './bank-accounts/bank-accounts.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { BanksModule } from './banks/banks.module';
 import { AssetsModule } from './assets/assets.module';
+import { AssetTransactionsModule } from './asset-transactions/asset-transactions.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { AssetsModule } from './assets/assets.module';
     SuppliersModule,
     BanksModule,
     AssetsModule,
+    AssetTransactionsModule,
   ],
   controllers: [AppController],
   providers: [

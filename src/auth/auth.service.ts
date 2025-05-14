@@ -16,6 +16,10 @@ import { omitFields } from 'src/common/utils/omit';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import {
+  JwtPayload,
+  MicrosoftRequest,
+} from 'src/common/interfaces/auth.interface';
 
 @Injectable()
 export class AuthService {
@@ -121,7 +125,7 @@ export class AuthService {
   async refresh(req: Request, refreshTokenDto: RefreshTokenDto) {
     const { refreshToken } = refreshTokenDto;
 
-    const session = await this.prisma.session.findUnique({
+    const session = await this.prisma.session.findFirst({
       where: { refreshToken },
     });
 
@@ -173,7 +177,7 @@ export class AuthService {
     const ipAddress = this.getClientIp(req);
 
     await this.prisma.session.update({
-      where: { refreshToken },
+      where: { accessToken: session.accessToken },
       data: {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
@@ -348,5 +352,56 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
+  }
+
+  async loginWithMicrosoft(req: MicrosoftRequest) {
+    const data = req.user;
+    const userAgent = req.headers['user-agent'];
+    // const sub = data.profile.id;
+    // const name = data.profile.displayName ?? '';
+    const email = data.profile.emails?.[0]?.value ?? '';
+
+    const user = await this.prisma.user.findFirst({
+      where: { email, deletedAt: null },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload: JwtPayload = { sub: user.id, email: user.email };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get<string>('REFRESH_TOKEN_LIFETIME', '7d'),
+    });
+
+    const refreshTokenExpiresAt = new Date();
+    const lifetimeDays = this.parseLifetimeToDays(
+      this.configService.get<string>('REFRESH_TOKEN_LIFETIME', '7d'),
+    );
+    refreshTokenExpiresAt.setDate(
+      refreshTokenExpiresAt.getDate() + lifetimeDays,
+    );
+
+    const ipAddress = this.getClientIp(req);
+
+    await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        accessToken,
+        refreshToken,
+        refreshTokenExpiresAt,
+        isActive: true,
+        ipAddress,
+        userAgent: userAgent || 'unknown',
+      },
+    });
+
+    return {
+      message: 'Login successful',
+      accessToken,
+      refreshToken,
+      user: omitFields(user, ['password']),
+    };
   }
 }

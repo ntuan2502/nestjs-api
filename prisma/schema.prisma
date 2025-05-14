@@ -45,14 +45,15 @@ model User {
   id String @id @default(uuid())
 
   // Basic
-  email    String    @unique
-  password String
-  name     String?
-  gender   Gender?
-  dob      DateTime?
-  phone    String?
-  address  String?
-  avatar   String?
+  email       String    @unique
+  password    String
+  name        String?
+  gender      Gender?
+  dob         DateTime?
+  phone       String?
+  address     String?
+  avatar      String?
+  microsoftId String?
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -78,10 +79,10 @@ model Session {
   id String @id @default(uuid())
 
   // Basic
-  accessToken           String   @unique
-  refreshToken          String   @unique
-  refreshTokenExpiresAt DateTime
-  isActive              Boolean  @default(true)
+  accessToken           String    @unique
+  refreshToken          String?
+  refreshTokenExpiresAt DateTime?
+  isActive              Boolean   @default(true)
   ipAddress             String
   userAgent             String
 
@@ -241,7 +242,7 @@ model Asset {
   id String @id @default(uuid())
 
   // Basic
-  internalCode     String    @unique
+  internalCode     String        @unique
   serialNumber     String?
   purchaseDate     DateTime?
   warrantyYears    WarrantyYear?

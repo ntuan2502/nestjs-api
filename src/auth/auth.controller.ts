@@ -5,17 +5,21 @@ import {
   Get,
   Req,
   UnauthorizedException,
+  UseGuards,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { Public } from 'src/common/decorators/public.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { AuthGuard } from '@nestjs/passport';
+import { MicrosoftRequest } from 'src/common/interfaces/auth.interface';
 
 @Controller('auth')
 export class AuthController {
@@ -89,5 +93,31 @@ export class AuthController {
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
     return this.authService.changePassword(req, changePasswordDto);
+  }
+
+  @Public()
+  @Get('microsoft')
+  @UseGuards(AuthGuard('microsoft'))
+  redirectToMicrosoft(): void {
+    // Passport sẽ tự redirect
+  }
+
+  @Public()
+  @Get('microsoft/redirect')
+  @UseGuards(AuthGuard('microsoft'))
+  async handleMicrosoftRedirect(
+    @Req() req: MicrosoftRequest,
+    @Res() res: Response,
+  ): Promise<void> {
+    const result = await this.authService.loginWithMicrosoft(req);
+
+    const frontendRedirectUrl = new URL('http://localhost:3000/auth/callback');
+    frontendRedirectUrl.searchParams.set('accessToken', result.accessToken);
+    frontendRedirectUrl.searchParams.set('refreshToken', result.refreshToken);
+    frontendRedirectUrl.searchParams.set('id', result.user.id);
+    frontendRedirectUrl.searchParams.set('email', result.user.email);
+    frontendRedirectUrl.searchParams.set('name', result.user.name || '');
+
+    res.redirect(frontendRedirectUrl.toString());
   }
 }

@@ -1,4 +1,4 @@
-import { WarrantyYear } from '@prisma/client';
+import { Warranty } from '@prisma/client';
 import { Type } from 'class-transformer';
 import { IsObject, IsOptional, IsString, MinLength } from 'class-validator';
 
@@ -16,8 +16,8 @@ export class CreateAssetDto {
   purchaseDate?: Date;
 
   @IsOptional()
-  @IsString({ message: 'warrantyYears must be a string' })
-  warrantyYears?: WarrantyYear;
+  @IsString({ message: 'warranty must be a string' })
+  warranty?: Warranty;
 
   @IsOptional()
   @IsObject({ message: 'customProperties must be a valid JSON object' })

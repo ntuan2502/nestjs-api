@@ -19,20 +19,29 @@ enum Gender {
 }
 
 enum TransactionType {
-  TRANSFER
-  REPAIR
-  MAINTENANCE
-  RETURN
-  OTHER
+  TRANSFER // Bàn giao thiết bị từ người này sang người khác
+  REPAIR // Gửi thiết bị đi sửa chữa
+  MAINTENANCE // Bảo trì định kỳ
+  RETURN // Trả lại thiết bị cho IT hoặc kho
+  DONATION // Tặng thiết bị cho bộ phận khác/tổ chức khác
+  DISPOSAL // Thanh lý thiết bị (liquidation)
+  LOST // Báo mất thiết bị
+  OTHER // Khác (ghi rõ trong note)
 }
 
 enum TransactionStatus {
-  PENDING
-  COMPLETED
-  CANCELLED
+  PENDING // Chờ xử lý (chờ ký, chờ duyệt)
+  IN_PROGRESS // Đang được xử lý (VD: đang sửa chữa, đang vận chuyển)
+  COMPLETED // Hoàn tất giao dịch
+  CANCELLED // Giao dịch đã bị huỷ
 }
 
-enum WarrantyYear {
+enum TransactionRole {
+  FROM // Người gửi thiết bị đi (khởi tạo hoặc ký)
+  TO // Người nhận thiết bị
+}
+
+enum Warranty {
   ONE
   TWO
   THREE
@@ -69,9 +78,8 @@ model User {
   department Department? @relation(fields: [departmentId], references: [id])
 
   // HasMany
-  sessions              Session[]
-  assetTransactionsFrom AssetTransaction[] @relation("FromUser")
-  assetTransactionsTo   AssetTransaction[] @relation("ToUser")
+  sessions          Session[]
+  assetTransactions AssetTransaction[]
 }
 
 model Session {
@@ -242,10 +250,10 @@ model Asset {
   id String @id @default(uuid())
 
   // Basic
-  internalCode     String        @unique
+  internalCode     String    @unique
   serialNumber     String?
   purchaseDate     DateTime?
-  warrantyYears    WarrantyYear?
+  warranty         Warranty?
   customProperties Json?
 
   // Timestamps
@@ -272,15 +280,16 @@ model AssetTransaction {
   id String @id @default(uuid())
 
   // Basic
-  note   String?
-  files  Json?
+  role   TransactionRole? // enum: FROM, TO
   type   TransactionType? // enum: TRANSFER, REPAIR, MAINTENANCE, RETURN, etc.
   status TransactionStatus? // enum: PENDING, COMPLETED, CANCELLED, etc.
+  note   String?
+  files  Json?
 
-  fromSignature String?
-  fromSignedAt  DateTime?
-  toSignature   String?
-  toSignedAt    DateTime?
+  signature String?
+  signedAt  DateTime?
+
+  handoverFilePath String?
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -289,15 +298,13 @@ model AssetTransaction {
 
   // FK
   assetId      String
-  fromUserId   String?
-  toUserId     String?
+  userId       String?
   departmentId String?
   officeId     String?
 
   // BelongsTo
   asset      Asset?      @relation(fields: [assetId], references: [id])
-  fromUser   User?       @relation("FromUser", fields: [fromUserId], references: [id])
-  toUser     User?       @relation("ToUser", fields: [toUserId], references: [id])
+  user       User?       @relation(fields: [userId], references: [id])
   department Department? @relation(fields: [departmentId], references: [id])
   office     Office?     @relation(fields: [officeId], references: [id])
 }

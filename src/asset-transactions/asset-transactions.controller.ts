@@ -13,7 +13,11 @@ import {
 import { AssetTransactionsService } from './asset-transactions.service';
 import { CreateAssetTransactionDto } from './dto/create-asset-transaction.dto';
 import { UpdateAssetTransactionDto } from './dto/update-asset-transaction.dto';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FilesInterceptor,
+} from '@nestjs/platform-express';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('asset-transactions')
 export class AssetTransactionsController {
@@ -52,29 +56,49 @@ export class AssetTransactionsController {
   update(
     @Param('id') id: string,
     @Body() updateAssetTransactionDto: UpdateAssetTransactionDto,
-    @UploadedFiles()
-    files: {
-      fromSignature?: Express.Multer.File[];
-      toSignature?: Express.Multer.File[];
-    },
   ) {
-    const fromSignatureFile = files.fromSignature
-      ? files.fromSignature[0]
-      : undefined;
-    const toSignatureFile = files.toSignature
-      ? files.toSignature[0]
-      : undefined;
-
-    return this.assetTransactionsService.update(
-      id,
-      updateAssetTransactionDto,
-      fromSignatureFile,
-      toSignatureFile,
-    );
+    return this.assetTransactionsService.update(id, updateAssetTransactionDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.assetTransactionsService.remove(id);
+  }
+
+  @Post('create-request')
+  @UseInterceptors(FilesInterceptor('fromSignature'))
+  createRequest(
+    @Body() createAssetTransactionDto: CreateAssetTransactionDto,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    const fromSignatureFile = files?.[0];
+
+    return this.assetTransactionsService.createRequest(
+      createAssetTransactionDto,
+      fromSignatureFile,
+    );
+  }
+
+  @Public()
+  @Get('confirm-request/:id')
+  getConfirmRequest(@Param('id') id: string) {
+    return this.assetTransactionsService.getConfirmRequest(id);
+  }
+
+  @Public()
+  @Post('confirm-request/:id')
+  @UseInterceptors(FilesInterceptor('toSignature'))
+  confirmRequest(
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    const toSignatureFile = files?.[0];
+
+    return this.assetTransactionsService.confirmRequest(id, toSignatureFile);
+  }
+
+  @Get('create-handover/:id')
+  createHandover(@Param('id') id: string) {
+    return this.assetTransactionsService.createHandover(id);
   }
 }

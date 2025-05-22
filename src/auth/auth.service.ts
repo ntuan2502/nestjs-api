@@ -20,6 +20,7 @@ import {
   JwtPayload,
   MicrosoftRequest,
 } from 'src/common/interfaces/auth.interface';
+import { getClientIp, parseLifetimeToDays } from 'src/common/utils/function';
 
 @Injectable()
 export class AuthService {
@@ -28,45 +29,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
     @Inject(ConfigService) private readonly configService: ConfigService,
   ) {}
-
-  private getClientIp(req: Request): string {
-    const forwardedFor = req.headers['x-forwarded-for'];
-
-    if (forwardedFor) {
-      const ipList = Array.isArray(forwardedFor)
-        ? forwardedFor[0]
-        : forwardedFor.split(',')[0];
-      return ipList.trim() || 'unknown';
-    }
-
-    const realIp = req.headers['x-real-ip'];
-
-    if (realIp) {
-      return Array.isArray(realIp) ? realIp[0] : realIp || 'unknown';
-    }
-
-    return req.ip || 'unknown';
-  }
-
-  private parseLifetimeToDays(lifetime: string): number {
-    const match = lifetime.match(/^(\d+)([dhm])$/);
-
-    if (!match) return 7;
-
-    const value = parseInt(match[1], 10);
-    const unit = match[2];
-
-    switch (unit) {
-      case 'd':
-        return value;
-      case 'h':
-        return value / 24;
-      case 'm':
-        return value / (24 * 60);
-      default:
-        return 7;
-    }
-  }
 
   async login(req: Request, loginDto: LoginDto) {
     const { email, password } = loginDto;
@@ -93,14 +55,14 @@ export class AuthService {
     });
 
     const refreshTokenExpiresAt = new Date();
-    const lifetimeDays = this.parseLifetimeToDays(
+    const lifetimeDays = parseLifetimeToDays(
       this.configService.get<string>('REFRESH_TOKEN_LIFETIME', '7d'),
     );
     refreshTokenExpiresAt.setDate(
       refreshTokenExpiresAt.getDate() + lifetimeDays,
     );
 
-    const ipAddress = this.getClientIp(req);
+    const ipAddress = getClientIp(req);
 
     await this.prisma.session.create({
       data: {
@@ -174,7 +136,7 @@ export class AuthService {
       { expiresIn: `${timeLeftSeconds}s` },
     );
 
-    const ipAddress = this.getClientIp(req);
+    const ipAddress = getClientIp(req);
 
     await this.prisma.session.update({
       where: { accessToken: session.accessToken },
@@ -199,7 +161,7 @@ export class AuthService {
       throw new UnauthorizedException('No accessToken provided');
     }
 
-    const session = await this.prisma.session.findUnique({
+    const session = await this.prisma.session.findFirst({
       where: { accessToken },
     });
 
@@ -357,8 +319,6 @@ export class AuthService {
   async loginWithMicrosoft(req: MicrosoftRequest) {
     const data = req.user;
     const userAgent = req.headers['user-agent'];
-    // const sub = data.profile.id;
-    // const name = data.profile.displayName ?? '';
     const email = data.profile.emails?.[0]?.value ?? '';
 
     const user = await this.prisma.user.findFirst({
@@ -376,14 +336,14 @@ export class AuthService {
     });
 
     const refreshTokenExpiresAt = new Date();
-    const lifetimeDays = this.parseLifetimeToDays(
+    const lifetimeDays = parseLifetimeToDays(
       this.configService.get<string>('REFRESH_TOKEN_LIFETIME', '7d'),
     );
     refreshTokenExpiresAt.setDate(
       refreshTokenExpiresAt.getDate() + lifetimeDays,
     );
 
-    const ipAddress = this.getClientIp(req);
+    const ipAddress = getClientIp(req);
 
     await this.prisma.session.create({
       data: {

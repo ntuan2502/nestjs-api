@@ -18,18 +18,21 @@ export class UsersService {
     const { email, password, ...rest } = createUserDto;
 
     const existingUser = await this.prisma.user.findFirst({
-      where: { email, deletedAt: null },
+      where: { email },
     });
 
     if (existingUser) {
       throw new BadRequestException('Email already exists');
     }
 
+    let constPassword = password || '';
+
     if (!password) {
-      throw new BadRequestException('Password is required');
+      constPassword = 'Amata@123';
+      // throw new BadRequestException('Password is required');
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(constPassword, 10);
 
     const user = await this.prisma.user.create({
       data: {

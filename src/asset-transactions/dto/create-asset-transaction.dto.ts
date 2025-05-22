@@ -1,4 +1,3 @@
-import { TransactionStatus, TransactionType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import { IsObject, IsOptional, IsString } from 'class-validator';
 
@@ -11,30 +10,6 @@ export class CreateAssetTransactionDto {
   @IsObject({ message: 'customProperties must be a valid JSON object' })
   @Type(() => Object)
   files?: Record<string, any>;
-
-  @IsOptional()
-  @IsString({ message: 'type must be a string' })
-  type?: TransactionType;
-
-  @IsOptional()
-  @IsString({ message: 'status must be a string' })
-  status?: TransactionStatus;
-
-  @IsOptional()
-  @IsString({ message: 'fromSignature must be a string' })
-  fromSignature?: string;
-
-  @IsOptional()
-  @IsString({ message: 'fromSignedAt must be a string' })
-  fromSignedAt?: Date;
-
-  @IsOptional()
-  @IsString({ message: 'toSignature must be a string' })
-  toSignature?: string;
-
-  @IsOptional()
-  @IsString({ message: 'fromSignedAt must be a string' })
-  toSignedAt?: Date;
 
   @IsString({ message: 'assetId must be a string' })
   assetId: string;

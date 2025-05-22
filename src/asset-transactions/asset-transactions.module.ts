@@ -8,7 +8,7 @@ import { AssetTransactionsController } from './asset-transactions.controller';
   imports: [
     MulterModule.register({
       storage: diskStorage({
-        destination: './public/uploads',
+        destination: './public/signed',
         filename: (req, file, cb) => {
           const filename = `${Date.now()}-${file.originalname}`;
           cb(null, filename);

@@ -46,10 +46,4 @@ export class AssetsController {
   remove(@Param('id') id: string) {
     return this.assetsService.remove(id);
   }
-
-  // @Post('handover')
-  // handover(@Body() body: { assetId: number }, @Req() req: AuthRequest) {
-  //   const userId = req.user.sub;
-  //   return this.assetsService.handover(body.assetId, userId);
-  // }
 }

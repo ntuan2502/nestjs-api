@@ -2,13 +2,16 @@
 CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE');
 
 -- CreateEnum
-CREATE TYPE "TransactionType" AS ENUM ('TRANSFER', 'REPAIR', 'MAINTENANCE', 'RETURN', 'OTHER');
+CREATE TYPE "TransactionType" AS ENUM ('TRANSFER', 'REPAIR', 'MAINTENANCE', 'RETURN', 'DONATION', 'DISPOSAL', 'LOST', 'OTHER');
 
 -- CreateEnum
-CREATE TYPE "TransactionStatus" AS ENUM ('PENDING', 'COMPLETED', 'CANCELLED');
+CREATE TYPE "TransactionStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "WarrantyYear" AS ENUM ('ONE', 'TWO', 'THREE', 'FOUR', 'FIVE');
+CREATE TYPE "TransactionRole" AS ENUM ('FROM', 'TO');
+
+-- CreateEnum
+CREATE TYPE "Warranty" AS ENUM ('ONE', 'TWO', 'THREE', 'FOUR', 'FIVE');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -21,6 +24,7 @@ CREATE TABLE "User" (
     "phone" TEXT,
     "address" TEXT,
     "avatar" TEXT,
+    "microsoftId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -34,8 +38,8 @@ CREATE TABLE "User" (
 CREATE TABLE "Session" (
     "id" TEXT NOT NULL,
     "accessToken" TEXT NOT NULL,
-    "refreshToken" TEXT NOT NULL,
-    "refreshTokenExpiresAt" TIMESTAMP(3) NOT NULL,
+    "refreshToken" TEXT,
+    "refreshTokenExpiresAt" TIMESTAMP(3),
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "ipAddress" TEXT NOT NULL,
     "userAgent" TEXT NOT NULL,
@@ -144,7 +148,7 @@ CREATE TABLE "Asset" (
     "internalCode" TEXT NOT NULL,
     "serialNumber" TEXT,
     "purchaseDate" TIMESTAMP(3),
-    "warrantyYears" "WarrantyYear",
+    "warranty" "Warranty",
     "customProperties" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -159,20 +163,19 @@ CREATE TABLE "Asset" (
 -- CreateTable
 CREATE TABLE "AssetTransaction" (
     "id" TEXT NOT NULL,
-    "note" TEXT,
-    "files" JSONB,
+    "role" "TransactionRole",
     "type" "TransactionType",
     "status" "TransactionStatus",
-    "fromSignature" TEXT,
-    "fromSignedAt" TIMESTAMP(3),
-    "toSignature" TEXT,
-    "toSignedAt" TIMESTAMP(3),
+    "note" TEXT,
+    "files" JSONB,
+    "signature" TEXT,
+    "signedAt" TIMESTAMP(3),
+    "handoverFilePath" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
     "assetId" TEXT NOT NULL,
-    "fromUserId" TEXT,
-    "toUserId" TEXT,
+    "userId" TEXT,
     "departmentId" TEXT,
     "officeId" TEXT,
 
@@ -184,9 +187,6 @@ CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Session_accessToken_key" ON "Session"("accessToken");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Session_refreshToken_key" ON "Session"("refreshToken");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Office_taxCode_key" ON "Office"("taxCode");
@@ -240,10 +240,7 @@ ALTER TABLE "Asset" ADD CONSTRAINT "Asset_supplierId_fkey" FOREIGN KEY ("supplie
 ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_assetId_fkey" FOREIGN KEY ("assetId") REFERENCES "Asset"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_fromUserId_fkey" FOREIGN KEY ("fromUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_toUserId_fkey" FOREIGN KEY ("toUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "Department"("id") ON DELETE SET NULL ON UPDATE CASCADE;

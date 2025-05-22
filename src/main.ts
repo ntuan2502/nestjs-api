@@ -12,10 +12,7 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  app.use(
-    '/public/uploads',
-    express.static(join(process.cwd(), 'public', 'uploads')),
-  );
+  app.use('/public', express.static(join(process.cwd(), 'public')));
 
   app.enableCors({
     origin: ['http://localhost:3000', 'https://next.tun.io.vn'],

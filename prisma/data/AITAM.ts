@@ -842,7 +842,7 @@ export const AITAMs = [
     device_type: {
       id: 34,
       documentId: 'pgu3woykstzop5eo3yhgs2qk',
-      name: 'Access-Point',
+      name: 'Access Point',
       createdAt: '2025-03-05T07:06:31.443Z',
       updatedAt: '2025-03-05T07:07:33.209Z',
       publishedAt: '2025-03-06T08:23:01.311Z',
@@ -905,7 +905,7 @@ export const AITAMs = [
     device_type: {
       id: 34,
       documentId: 'pgu3woykstzop5eo3yhgs2qk',
-      name: 'Access-Point',
+      name: 'Access Point',
       createdAt: '2025-03-05T07:06:31.443Z',
       updatedAt: '2025-03-05T07:07:33.209Z',
       publishedAt: '2025-03-06T08:23:01.311Z',
@@ -968,7 +968,7 @@ export const AITAMs = [
     device_type: {
       id: 34,
       documentId: 'pgu3woykstzop5eo3yhgs2qk',
-      name: 'Access-Point',
+      name: 'Access Point',
       createdAt: '2025-03-05T07:06:31.443Z',
       updatedAt: '2025-03-05T07:07:33.209Z',
       publishedAt: '2025-03-06T08:23:01.311Z',
@@ -1031,7 +1031,7 @@ export const AITAMs = [
     device_type: {
       id: 34,
       documentId: 'pgu3woykstzop5eo3yhgs2qk',
-      name: 'Access-Point',
+      name: 'Access Point',
       createdAt: '2025-03-05T07:06:31.443Z',
       updatedAt: '2025-03-05T07:07:33.209Z',
       publishedAt: '2025-03-06T08:23:01.311Z',
@@ -1094,7 +1094,7 @@ export const AITAMs = [
     device_type: {
       id: 34,
       documentId: 'pgu3woykstzop5eo3yhgs2qk',
-      name: 'Access-Point',
+      name: 'Access Point',
       createdAt: '2025-03-05T07:06:31.443Z',
       updatedAt: '2025-03-05T07:07:33.209Z',
       publishedAt: '2025-03-06T08:23:01.311Z',
@@ -3867,7 +3867,7 @@ export const AITAMs = [
     device_type: {
       id: 34,
       documentId: 'pgu3woykstzop5eo3yhgs2qk',
-      name: 'Access-Point',
+      name: 'Access Point',
       createdAt: '2025-03-05T07:06:31.443Z',
       updatedAt: '2025-03-05T07:07:33.209Z',
       publishedAt: '2025-03-06T08:23:01.311Z',
@@ -3930,7 +3930,7 @@ export const AITAMs = [
     device_type: {
       id: 34,
       documentId: 'pgu3woykstzop5eo3yhgs2qk',
-      name: 'Access-Point',
+      name: 'Access Point',
       createdAt: '2025-03-05T07:06:31.443Z',
       updatedAt: '2025-03-05T07:07:33.209Z',
       publishedAt: '2025-03-06T08:23:01.311Z',
@@ -3993,7 +3993,7 @@ export const AITAMs = [
     device_type: {
       id: 34,
       documentId: 'pgu3woykstzop5eo3yhgs2qk',
-      name: 'Access-Point',
+      name: 'Access Point',
       createdAt: '2025-03-05T07:06:31.443Z',
       updatedAt: '2025-03-05T07:07:33.209Z',
       publishedAt: '2025-03-06T08:23:01.311Z',
@@ -4056,7 +4056,7 @@ export const AITAMs = [
     device_type: {
       id: 34,
       documentId: 'pgu3woykstzop5eo3yhgs2qk',
-      name: 'Access-Point',
+      name: 'Access Point',
       createdAt: '2025-03-05T07:06:31.443Z',
       updatedAt: '2025-03-05T07:07:33.209Z',
       publishedAt: '2025-03-06T08:23:01.311Z',
@@ -4119,7 +4119,7 @@ export const AITAMs = [
     device_type: {
       id: 34,
       documentId: 'pgu3woykstzop5eo3yhgs2qk',
-      name: 'Access-Point',
+      name: 'Access Point',
       createdAt: '2025-03-05T07:06:31.443Z',
       updatedAt: '2025-03-05T07:07:33.209Z',
       publishedAt: '2025-03-06T08:23:01.311Z',

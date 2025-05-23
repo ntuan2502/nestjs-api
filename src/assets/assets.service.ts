@@ -36,11 +36,27 @@ export class AssetsService {
   }
 
   async findAll(includeParam?: string | string[], filter?: string | string[]) {
-    const include = parseInclude(includeParam);
+    // const include = parseInclude(includeParam);
     const filterWhere = parseFilter(filter);
     const assets = await this.prisma.asset.findMany({
       where: { deletedAt: null, ...filterWhere },
-      include,
+      // include,
+      include: {
+        deviceType: true,
+        deviceModel: true,
+        assetTransactions: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: {
+              include: {
+                office: true,
+                department: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: { internalCode: 'asc' },
     });
 

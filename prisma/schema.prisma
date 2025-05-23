@@ -13,19 +13,56 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum TransactionType {
+  TRANSFER // Bàn giao thiết bị từ người này sang người khác
+  REPAIR // Gửi thiết bị đi sửa chữa
+  MAINTENANCE // Bảo trì định kỳ
+  RETURN // Trả lại thiết bị cho IT hoặc kho
+  DONATION // Tặng thiết bị cho bộ phận khác/tổ chức khác
+  DISPOSAL // Thanh lý thiết bị (liquidation)
+  LOST // Báo mất thiết bị
+  OTHER // Khác (ghi rõ trong note)
+}
+
+enum TransactionStatus {
+  PENDING // Chờ xử lý (chờ ký, chờ duyệt)
+  IN_PROGRESS // Đang được xử lý (VD: đang sửa chữa, đang vận chuyển)
+  COMPLETED // Hoàn tất giao dịch
+  CANCELLED // Giao dịch đã bị huỷ
+}
+
+enum TransactionRole {
+  FROM // Người gửi thiết bị đi (khởi tạo hoặc ký)
+  TO // Người nhận thiết bị
+}
+
+enum Warranty {
+  ONE
+  TWO
+  THREE
+  FOUR
+  FIVE
+}
+
 model User {
   // ID
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
 
   // Basic
-  email    String    @unique
-  password String
-  name     String
-  gender   String?
-  dob      DateTime?
-  phone    String?
-  address  String?
-  avatar   String?
+  email       String    @unique
+  password    String
+  name        String?
+  gender      Gender?
+  dob         DateTime?
+  phone       String?
+  address     String?
+  avatar      String?
+  microsoftId String?
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -33,37 +70,40 @@ model User {
   deletedAt DateTime?
 
   // FK
-  officeId     Int?
-  departmentId Int?
+  officeId     String?
+  departmentId String?
 
   // BelongsTo 
   office     Office?     @relation(fields: [officeId], references: [id])
   department Department? @relation(fields: [departmentId], references: [id])
 
   // HasMany
-  sessions Session[]
-  assets   Asset[]
+  sessions          Session[]
+  assetTransactions AssetTransaction[]
 }
 
 model Session {
   // ID
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
 
   // Basic
   accessToken           String    @unique
-  refreshToken          String?   @unique
+  refreshToken          String?
   refreshTokenExpiresAt DateTime?
   isActive              Boolean   @default(true)
-  ipAddress             String?
-  userAgent             String?
+  ipAddress             String
+  userAgent             String
 
   // Timestamps
-  createdAt       DateTime  @default(now())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
   lastUsedAt      DateTime  @default(now())
   lastRefreshedAt DateTime?
 
   // FK
-  userId Int?
+  userId String?
 
   // BelongsTo
   user User? @relation(fields: [userId], references: [id])
@@ -71,10 +111,10 @@ model Session {
 
 model Office {
   // ID
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
 
   // Basic
-  name              String  @unique
+  name              String?
   internationalName String?
   shortName         String?
   taxCode           String  @unique
@@ -86,13 +126,13 @@ model Office {
   deletedAt DateTime?
 
   // HasMany
-  users  User[]
-  assets Asset[]
+  users             User[]
+  assetTransactions AssetTransaction[]
 }
 
 model Department {
   // ID
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
 
   // Basic
   name String @unique
@@ -103,13 +143,13 @@ model Department {
   deletedAt DateTime?
 
   // HasMany
-  users  User[]
-  assets Asset[]
+  users             User[]
+  assetTransactions AssetTransaction[]
 }
 
 model DeviceType {
   // ID
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
 
   // Basic
   name String @unique
@@ -126,7 +166,7 @@ model DeviceType {
 
 model DeviceModel {
   // ID
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
 
   // Basic
   name String @unique
@@ -137,7 +177,7 @@ model DeviceModel {
   deletedAt DateTime?
 
   // FK
-  deviceTypeId Int?
+  deviceTypeId String?
 
   // BelongsTo
   deviceType DeviceType? @relation(fields: [deviceTypeId], references: [id])
@@ -148,11 +188,11 @@ model DeviceModel {
 
 model Bank {
   // ID
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
 
   // Basic
-  name      String
-  shortName String? // optional, ví dụ: VCB, ACB
+  name      String?
+  shortName String  @unique
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -165,7 +205,7 @@ model Bank {
 
 model BankAccount {
   // ID
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
 
   // Basic
   accountNumber String
@@ -177,8 +217,8 @@ model BankAccount {
   deletedAt DateTime?
 
   // FK
-  supplierId Int?
-  bankId     Int?
+  supplierId String?
+  bankId     String?
 
   // BelongsTo
   supplier Supplier? @relation(fields: [supplierId], references: [id])
@@ -187,13 +227,13 @@ model BankAccount {
 
 model Supplier {
   // ID
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
 
   // Basic
   name    String
-  address String
-  taxCode String @unique
-  phone   String
+  address String?
+  taxCode String  @unique
+  phone   String?
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -207,15 +247,14 @@ model Supplier {
 
 model Asset {
   // ID
-  id Int @id @default(autoincrement())
+  id String @id @default(uuid())
 
   // Basic
-  internalCode     String   @unique
-  serialNumber     String
-  purchaseDate     DateTime
-  warrantyDuration String
-  status           String
-  customProperties Json? // Key-Value dạng JSON: { cpu: "...", ram: "...", resolution: "..." }
+  internalCode     String    @unique
+  serialNumber     String?
+  purchaseDate     DateTime?
+  warranty         Warranty?
+  customProperties Json?
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -223,18 +262,49 @@ model Asset {
   deletedAt DateTime?
 
   // FK
-  deviceModelId Int?
-  deviceTypeId  Int?
-  supplierId    Int?
-  departmentId  Int?
-  officeId      Int?
-  userId        Int?
+  deviceModelId String?
+  deviceTypeId  String?
+  supplierId    String?
 
   // BelongsTo
   deviceModel DeviceModel? @relation(fields: [deviceModelId], references: [id])
   deviceType  DeviceType?  @relation(fields: [deviceTypeId], references: [id])
   supplier    Supplier?    @relation(fields: [supplierId], references: [id])
-  department  Department?  @relation(fields: [departmentId], references: [id])
-  office      Office?      @relation(fields: [officeId], references: [id])
-  user        User?        @relation(fields: [userId], references: [id])
+
+  // HasMany
+  assetTransactions AssetTransaction[]
+}
+
+model AssetTransaction {
+  // ID
+  id String @id @default(uuid())
+
+  // Basic
+  role   TransactionRole? // enum: FROM, TO
+  type   TransactionType? // enum: TRANSFER, REPAIR, MAINTENANCE, RETURN, etc.
+  status TransactionStatus? // enum: PENDING, COMPLETED, CANCELLED, etc.
+  note   String?
+  files  Json?
+
+  signature String?
+  signedAt  DateTime?
+
+  handoverFilePath String?
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // FK
+  assetId      String
+  userId       String?
+  departmentId String?
+  officeId     String?
+
+  // BelongsTo
+  asset      Asset?      @relation(fields: [assetId], references: [id])
+  user       User?       @relation(fields: [userId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  office     Office?     @relation(fields: [officeId], references: [id])
 }

@@ -4,13 +4,16 @@ import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersService } from 'src/users/users.service';
+import { MicrosoftStrategy } from './strategies/microsoft.strategy';
 
 @Module({
   imports: [
+    ConfigModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
+      imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
         signOptions: {
@@ -22,6 +25,6 @@ import { UsersService } from 'src/users/users.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, UsersService],
+  providers: [AuthService, JwtStrategy, MicrosoftStrategy, UsersService],
 })
 export class AuthModule {}

@@ -1,23 +1,23 @@
 import { IsString, MinLength, IsOptional } from 'class-validator';
 
 export class CreateOfficeDto {
-  @IsString({ message: 'Name must be a string' })
-  @MinLength(1, { message: 'Name must not be empty' })
-  name: string;
-
-  @IsString({ message: 'International name must be a string' })
   @IsOptional()
+  @IsString({ message: 'name must be a string' })
+  name?: string;
+
+  @IsOptional()
+  @IsString({ message: 'internationalName must be a string' })
   internationalName?: string;
 
-  @IsString({ message: 'Short name must be a string' })
   @IsOptional()
+  @IsString({ message: 'shortName must be a string' })
   shortName?: string;
 
-  @IsString({ message: 'Tax code must be a string' })
-  @MinLength(1, { message: 'Tax code must not be empty' })
+  @IsString({ message: 'taxCode must be a string' })
+  @MinLength(1, { message: 'taxCode must not be empty' })
   taxCode: string;
 
-  @IsString({ message: 'Address must be a string' })
   @IsOptional()
+  @IsString({ message: 'address must be a string' })
   address?: string;
 }

@@ -1,4 +1,0 @@
--- AlterTable
-ALTER TABLE "Office" ALTER COLUMN "address" DROP NOT NULL,
-ALTER COLUMN "internationalName" DROP NOT NULL,
-ALTER COLUMN "shortName" DROP NOT NULL;

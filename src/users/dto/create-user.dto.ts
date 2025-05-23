@@ -1,29 +1,55 @@
+import { Gender } from '@prisma/client';
 import {
   IsEmail,
   IsString,
   MinLength,
-  IsInt,
   IsOptional,
   Matches,
 } from 'class-validator';
 
 export class CreateUserDto {
   @IsEmail({}, { message: 'Invalid email format' })
+  @MinLength(1, { message: 'email must not be empty' })
   email: string;
 
-  @IsString({ message: 'Password must be a string' })
-  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @IsOptional()
+  @IsString({ message: 'password must be a string' })
+  @MinLength(8, { message: 'password must be at least 8 characters long' })
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/, {
     message:
-      'Password must include uppercase, lowercase, number, and special character',
+      'password must include uppercase, lowercase, number, and special character',
   })
-  password: string;
+  password?: string;
 
-  @IsString({ message: 'Name must be a string' })
-  @MinLength(1, { message: 'Name must not be empty' })
-  name: string;
-
-  @IsInt({ message: 'Office ID must be an integer' })
   @IsOptional()
-  officeId?: number;
+  @IsString({ message: 'name must be a string' })
+  name?: string;
+
+  @IsOptional()
+  @IsString({ message: 'gender must be a string' })
+  gender?: Gender;
+
+  @IsOptional()
+  @IsString({ message: 'dob must be a string' })
+  dob?: Date;
+
+  @IsOptional()
+  @IsString({ message: 'phone must be a string' })
+  phone?: string;
+
+  @IsOptional()
+  @IsString({ message: 'address must be a string' })
+  address?: string;
+
+  @IsOptional()
+  @IsString({ message: 'avatar must be a string' })
+  avatar?: string;
+
+  @IsOptional()
+  @IsString({ message: 'departmentId must be a string' })
+  departmentId?: string;
+
+  @IsOptional()
+  @IsString({ message: 'officeId must be a string' })
+  officeId?: string;
 }

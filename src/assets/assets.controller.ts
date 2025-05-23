@@ -23,27 +23,27 @@ export class AssetsController {
 
   @Get()
   findAll(
-    @Query('include') include?: string | string[],
+    @Query('include') includeParam?: string | string[],
     @Query('filter') filter?: string | string[],
   ) {
-    return this.assetsService.findAll(include, filter);
+    return this.assetsService.findAll(includeParam, filter);
   }
 
   @Get(':id')
   findOne(
     @Param('id') id: string,
-    @Query('include') include?: string | string[],
+    @Query('include') includeParam?: string | string[],
   ) {
-    return this.assetsService.findOne(+id, include);
+    return this.assetsService.findOne(id, includeParam);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateAssetDto: UpdateAssetDto) {
-    return this.assetsService.update(+id, updateAssetDto);
+    return this.assetsService.update(id, updateAssetDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.assetsService.remove(+id);
+    return this.assetsService.remove(id);
   }
 }

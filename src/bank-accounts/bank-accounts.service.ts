@@ -48,7 +48,7 @@ export class BankAccountsService {
     };
   }
 
-  async findOne(id: number, includeParam?: string | string[]) {
+  async findOne(id: string, includeParam?: string | string[]) {
     const include = parseInclude(includeParam);
     const bankAccount = await this.prisma.bankAccount.findFirst({
       where: { id, deletedAt: null },
@@ -56,7 +56,7 @@ export class BankAccountsService {
     });
 
     if (!bankAccount) {
-      throw new NotFoundException(`Bank account with ID ${id} not found`);
+      throw new NotFoundException(`Bank account with id ${id} not found`);
     }
 
     return {
@@ -65,19 +65,38 @@ export class BankAccountsService {
     };
   }
 
-  async update(id: number, updateBankAccountDto: UpdateBankAccountDto) {
+  async update(id: string, updateBankAccountDto: UpdateBankAccountDto) {
     const bankAccount = await this.prisma.bankAccount.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!bankAccount) {
-      throw new NotFoundException(`Bank account with ID ${id} not found`);
+      throw new NotFoundException(`Bank account with id ${id} not found`);
+    }
+
+    const { accountName, accountNumber } = updateBankAccountDto;
+    if (
+      accountName !== bankAccount.accountName &&
+      accountNumber !== bankAccount.accountNumber
+    ) {
+      const existingBank = await this.prisma.bankAccount.findFirst({
+        where: {
+          accountName,
+          accountNumber,
+          deletedAt: null,
+        },
+      });
+
+      if (existingBank) {
+        throw new BadRequestException(
+          `Bank account with name ${accountName} and account number ${accountNumber} already exists`,
+        );
+      }
     }
 
     const updatedBank = await this.prisma.bankAccount.update({
       where: { id },
       data: updateBankAccountDto,
-      include: { supplier: true, bank: true },
     });
 
     return {
@@ -86,13 +105,13 @@ export class BankAccountsService {
     };
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     const bankAccount = await this.prisma.bankAccount.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!bankAccount) {
-      throw new NotFoundException(`Bank account with ID ${id} not found`);
+      throw new NotFoundException(`Bank account with id ${id} not found`);
     }
 
     await this.prisma.bankAccount.update({

@@ -15,6 +15,12 @@ import { Request } from 'express';
 import { omitFields } from 'src/common/utils/omit';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import {
+  JwtPayload,
+  MicrosoftRequest,
+} from 'src/common/interfaces/auth.interface';
+import { getClientIp, parseLifetimeToDays } from 'src/common/utils/function';
 
 @Injectable()
 export class AuthService {
@@ -24,46 +30,7 @@ export class AuthService {
     @Inject(ConfigService) private readonly configService: ConfigService,
   ) {}
 
-  private getClientIp(req: Request): string {
-    const forwardedFor = req.headers['x-forwarded-for'];
-
-    if (forwardedFor) {
-      const ipList = Array.isArray(forwardedFor)
-        ? forwardedFor[0]
-        : forwardedFor.split(',')[0];
-      return ipList.trim() || 'unknown';
-    }
-
-    const realIp = req.headers['x-real-ip'];
-
-    if (realIp) {
-      return Array.isArray(realIp) ? realIp[0] : realIp || 'unknown';
-    }
-
-    return req.ip || 'unknown';
-  }
-
-  private parseLifetimeToDays(lifetime: string): number {
-    const match = lifetime.match(/^(\d+)([dhm])$/);
-
-    if (!match) return 7;
-
-    const value = parseInt(match[1], 10);
-    const unit = match[2];
-
-    switch (unit) {
-      case 'd':
-        return value;
-      case 'h':
-        return value / 24;
-      case 'm':
-        return value / (24 * 60);
-      default:
-        return 7;
-    }
-  }
-
-  async login(loginDto: LoginDto, req: Request) {
+  async login(req: Request, loginDto: LoginDto) {
     const { email, password } = loginDto;
     const userAgent = req.headers['user-agent'];
 
@@ -88,14 +55,14 @@ export class AuthService {
     });
 
     const refreshTokenExpiresAt = new Date();
-    const lifetimeDays = this.parseLifetimeToDays(
+    const lifetimeDays = parseLifetimeToDays(
       this.configService.get<string>('REFRESH_TOKEN_LIFETIME', '7d'),
     );
     refreshTokenExpiresAt.setDate(
       refreshTokenExpiresAt.getDate() + lifetimeDays,
     );
 
-    const ipAddress = this.getClientIp(req);
+    const ipAddress = getClientIp(req);
 
     await this.prisma.session.create({
       data: {
@@ -105,7 +72,7 @@ export class AuthService {
         refreshTokenExpiresAt,
         isActive: true,
         ipAddress,
-        userAgent,
+        userAgent: userAgent || 'unknown',
       },
     });
 
@@ -117,10 +84,10 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshTokenDto: RefreshTokenDto, req: Request) {
+  async refresh(req: Request, refreshTokenDto: RefreshTokenDto) {
     const { refreshToken } = refreshTokenDto;
 
-    const session = await this.prisma.session.findUnique({
+    const session = await this.prisma.session.findFirst({
       where: { refreshToken },
     });
 
@@ -169,10 +136,10 @@ export class AuthService {
       { expiresIn: `${timeLeftSeconds}s` },
     );
 
-    const ipAddress = this.getClientIp(req);
+    const ipAddress = getClientIp(req);
 
     await this.prisma.session.update({
-      where: { refreshToken },
+      where: { accessToken: session.accessToken },
       data: {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
@@ -188,8 +155,13 @@ export class AuthService {
     };
   }
 
-  async logout(accessToken: string) {
-    const session = await this.prisma.session.findUnique({
+  async logout(req: AuthRequest) {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) {
+      throw new UnauthorizedException('No accessToken provided');
+    }
+
+    const session = await this.prisma.session.findFirst({
       where: { accessToken },
     });
 
@@ -205,7 +177,7 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
-  async logoutSession(userId: number, accessToken: string) {
+  async logoutSession(userId: string, accessToken: string) {
     const session = await this.prisma.session.findFirst({
       where: {
         accessToken,
@@ -231,7 +203,8 @@ export class AuthService {
     return { message: `Logged out successfully` };
   }
 
-  async logoutAll(userId: number) {
+  async logoutAll(req: AuthRequest) {
+    const userId = req.user.sub;
     const activeSessions = await this.prisma.session.findMany({
       where: { userId, isActive: true },
     });
@@ -248,7 +221,8 @@ export class AuthService {
     return { message: `Logged out ${activeSessions.length} active sessions` };
   }
 
-  async getSessions(userId: number) {
+  async getSessions(req: AuthRequest) {
+    const userId = req.user.sub;
     const sessions = await this.prisma.session.findMany({
       where: { userId },
       orderBy: {
@@ -262,7 +236,8 @@ export class AuthService {
     };
   }
 
-  async getProfile(userId: number) {
+  async getProfile(req: AuthRequest) {
+    const userId = req.user.sub;
     const user = await this.prisma.user.findFirst({
       where: { id: userId, deletedAt: null },
       include: {
@@ -281,7 +256,8 @@ export class AuthService {
     };
   }
 
-  async updateProfile(updateProfileDto: UpdateProfileDto, userId: number) {
+  async updateProfile(req: AuthRequest, updateProfileDto: UpdateProfileDto) {
+    const userId = req.user.sub;
     const { name, gender, dob, phone, address, avatar } = updateProfileDto;
 
     const user = await this.prisma.user.findFirst({
@@ -312,7 +288,8 @@ export class AuthService {
     };
   }
 
-  async changePassword(changePasswordDto: ChangePasswordDto, userId: number) {
+  async changePassword(req: AuthRequest, changePasswordDto: ChangePasswordDto) {
+    const userId = req.user.sub;
     const { oldPassword, newPassword } = changePasswordDto;
 
     const user = await this.prisma.user.findFirst({
@@ -337,5 +314,54 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
+  }
+
+  async loginWithMicrosoft(req: MicrosoftRequest) {
+    const data = req.user;
+    const userAgent = req.headers['user-agent'];
+    const email = data.profile.emails?.[0]?.value ?? '';
+
+    const user = await this.prisma.user.findFirst({
+      where: { email, deletedAt: null },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload: JwtPayload = { sub: user.id, email: user.email };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get<string>('REFRESH_TOKEN_LIFETIME', '7d'),
+    });
+
+    const refreshTokenExpiresAt = new Date();
+    const lifetimeDays = parseLifetimeToDays(
+      this.configService.get<string>('REFRESH_TOKEN_LIFETIME', '7d'),
+    );
+    refreshTokenExpiresAt.setDate(
+      refreshTokenExpiresAt.getDate() + lifetimeDays,
+    );
+
+    const ipAddress = getClientIp(req);
+
+    await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        accessToken,
+        refreshToken,
+        refreshTokenExpiresAt,
+        isActive: true,
+        ipAddress,
+        userAgent: userAgent || 'unknown',
+      },
+    });
+
+    return {
+      message: 'Login successful',
+      accessToken,
+      refreshToken,
+      user: omitFields(user, ['password']),
+    };
   }
 }

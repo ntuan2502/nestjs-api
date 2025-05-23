@@ -22,16 +22,16 @@ export class BankAccountsController {
   }
 
   @Get()
-  findAll(@Query('include') include?: string | string[]) {
-    return this.bankAccountsService.findAll(include);
+  findAll(@Query('include') includeParam?: string | string[]) {
+    return this.bankAccountsService.findAll(includeParam);
   }
 
   @Get(':id')
   findOne(
     @Param('id') id: string,
-    @Query('include') include?: string | string[],
+    @Query('include') includeParam?: string | string[],
   ) {
-    return this.bankAccountsService.findOne(+id, include);
+    return this.bankAccountsService.findOne(id, includeParam);
   }
 
   @Patch(':id')
@@ -39,11 +39,11 @@ export class BankAccountsController {
     @Param('id') id: string,
     @Body() updateBankAccountDto: UpdateBankAccountDto,
   ) {
-    return this.bankAccountsService.update(+id, updateBankAccountDto);
+    return this.bankAccountsService.update(id, updateBankAccountDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.bankAccountsService.remove(+id);
+    return this.bankAccountsService.remove(id);
   }
 }

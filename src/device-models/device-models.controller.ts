@@ -22,16 +22,16 @@ export class DeviceModelsController {
   }
 
   @Get()
-  findAll(@Query('include') include?: string | string[]) {
-    return this.deviceModelsService.findAll(include);
+  findAll(@Query('include') includeParam?: string | string[]) {
+    return this.deviceModelsService.findAll(includeParam);
   }
 
   @Get(':id')
   findOne(
     @Param('id') id: string,
-    @Query('include') include?: string | string[],
+    @Query('include') includeParam?: string | string[],
   ) {
-    return this.deviceModelsService.findOne(+id, include);
+    return this.deviceModelsService.findOne(id, includeParam);
   }
 
   @Patch(':id')
@@ -39,11 +39,11 @@ export class DeviceModelsController {
     @Param('id') id: string,
     @Body() updateDeviceModelDto: UpdateDeviceModelDto,
   ) {
-    return this.deviceModelsService.update(+id, updateDeviceModelDto);
+    return this.deviceModelsService.update(id, updateDeviceModelDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.deviceModelsService.remove(+id);
+    return this.deviceModelsService.remove(id);
   }
 }

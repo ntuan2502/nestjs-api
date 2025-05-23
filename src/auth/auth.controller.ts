@@ -5,20 +5,21 @@ import {
   Get,
   Req,
   UnauthorizedException,
+  UseGuards,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { Public } from 'src/common/decorators/public.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-
-interface AuthRequest extends Request {
-  user: { sub: number; email: string };
-}
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { AuthGuard } from '@nestjs/passport';
+import { MicrosoftRequest } from 'src/common/interfaces/auth.interface';
 
 @Controller('auth')
 export class AuthController {
@@ -29,8 +30,8 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  login(@Body() loginDto: LoginDto, @Req() req: Request) {
-    return this.authService.login(loginDto, req);
+  login(@Req() req: Request, @Body() loginDto: LoginDto) {
+    return this.authService.login(req, loginDto);
   }
 
   @Public()
@@ -41,65 +42,82 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
-  refresh(@Body() refreshTokenDto: RefreshTokenDto, @Req() req: Request) {
-    return this.authService.refresh(refreshTokenDto, req);
+  refresh(@Req() req: Request, @Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.refresh(req, refreshTokenDto);
   }
 
   @Post('logout')
   logout(@Req() req: AuthRequest) {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      throw new UnauthorizedException('No token provided');
-    }
-    return this.authService.logout(token);
+    return this.authService.logout(req);
   }
 
   @Get('sessions')
   getSessions(@Req() req: AuthRequest) {
-    const userId = req.user.sub;
-    return this.authService.getSessions(userId);
+    return this.authService.getSessions(req);
   }
 
   @Public()
   @Post('logout-session')
-  logoutSession(@Body() userData: { accessToken: string; userId: number }) {
-    const { accessToken, userId } = userData;
+  logoutSession(@Body() userData: { userId: string; accessToken: string }) {
+    const { userId, accessToken } = userData;
     if (!userId) {
       throw new UnauthorizedException('userId not found');
     }
     if (!accessToken) {
       throw new UnauthorizedException('accessToken not found');
     }
-    return this.authService.logoutSession(Number(userId), accessToken);
+    return this.authService.logoutSession(userId, accessToken);
   }
 
   @Post('logout-all')
   logoutAll(@Req() req: AuthRequest) {
-    const userId = req.user.sub;
-    return this.authService.logoutAll(userId);
+    return this.authService.logoutAll(req);
   }
 
   @Get('profile')
   async getProfile(@Req() req: AuthRequest) {
-    const userId = req.user.sub;
-    return this.authService.getProfile(userId);
+    return this.authService.getProfile(req);
   }
 
   @Post('profile')
   async updateProfile(
-    @Body() updateProfileDto: UpdateProfileDto,
     @Req() req: AuthRequest,
+    @Body() updateProfileDto: UpdateProfileDto,
   ) {
-    const userId = req.user.sub;
-    return this.authService.updateProfile(updateProfileDto, userId);
+    return this.authService.updateProfile(req, updateProfileDto);
   }
 
   @Post('change-password')
   changePassword(
-    @Body() changePasswordDto: ChangePasswordDto,
     @Req() req: AuthRequest,
+    @Body() changePasswordDto: ChangePasswordDto,
   ) {
-    const userId = req.user.sub;
-    return this.authService.changePassword(changePasswordDto, userId);
+    return this.authService.changePassword(req, changePasswordDto);
+  }
+
+  @Public()
+  @Get('microsoft')
+  @UseGuards(AuthGuard('microsoft'))
+  redirectToMicrosoft(): void {
+    // Passport sẽ tự redirect
+  }
+
+  @Public()
+  @Get('microsoft/redirect')
+  @UseGuards(AuthGuard('microsoft'))
+  async handleMicrosoftRedirect(
+    @Req() req: MicrosoftRequest,
+    @Res() res: Response,
+  ): Promise<void> {
+    const result = await this.authService.loginWithMicrosoft(req);
+
+    const frontendRedirectUrl = new URL('http://localhost:3000/auth/callback');
+    frontendRedirectUrl.searchParams.set('accessToken', result.accessToken);
+    frontendRedirectUrl.searchParams.set('refreshToken', result.refreshToken);
+    frontendRedirectUrl.searchParams.set('id', result.user.id);
+    frontendRedirectUrl.searchParams.set('email', result.user.email);
+    frontendRedirectUrl.searchParams.set('name', result.user.name || '');
+
+    res.redirect(frontendRedirectUrl.toString());
   }
 }

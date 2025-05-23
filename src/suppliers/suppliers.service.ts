@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -44,18 +48,15 @@ export class SuppliersService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: string, includeParam?: string | string[]) {
+    const include = parseInclude(includeParam);
     const supplier = await this.prisma.supplier.findFirst({
       where: { id, deletedAt: null },
-      include: {
-        bankAccounts: {
-          include: { bank: true },
-        },
-      },
+      include,
     });
 
     if (!supplier) {
-      throw new BadRequestException(`Supplier with ID ${id} not found`);
+      throw new NotFoundException(`Supplier with id ${id} not found`);
     }
 
     return {
@@ -64,23 +65,31 @@ export class SuppliersService {
     };
   }
 
-  async update(id: number, updateSupplierDto: UpdateSupplierDto) {
+  async update(id: string, updateSupplierDto: UpdateSupplierDto) {
     const supplier = await this.prisma.supplier.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!supplier) {
-      throw new BadRequestException(`Supplier with ID ${id} not found`);
+      throw new NotFoundException(`Supplier with id ${id} not found`);
+    }
+
+    const { taxCode } = updateSupplierDto;
+
+    if (taxCode !== supplier.taxCode) {
+      const existingSupplier = await this.prisma.supplier.findFirst({
+        where: { taxCode, deletedAt: null },
+      });
+      if (existingSupplier) {
+        throw new BadRequestException(
+          `Supplier with tax code ${updateSupplierDto.taxCode} already exists`,
+        );
+      }
     }
 
     const updatedSupplier = await this.prisma.supplier.update({
       where: { id },
       data: updateSupplierDto,
-      include: {
-        bankAccounts: {
-          include: { bank: true },
-        },
-      },
     });
 
     return {
@@ -89,13 +98,13 @@ export class SuppliersService {
     };
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     const supplier = await this.prisma.supplier.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!supplier) {
-      throw new BadRequestException(`Supplier with ID ${id} not found`);
+      throw new NotFoundException(`Supplier with id ${id} not found`);
     }
 
     await this.prisma.supplier.update({

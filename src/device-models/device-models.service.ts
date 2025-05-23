@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateDeviceModelDto } from './dto/create-device-model.dto';
 import { UpdateDeviceModelDto } from './dto/update-device-model.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -9,16 +13,17 @@ export class DeviceModelsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createDeviceModelDto: CreateDeviceModelDto) {
+    const { name } = createDeviceModelDto;
     const existingDeviceModel = await this.prisma.deviceModel.findFirst({
       where: {
-        name: createDeviceModelDto.name,
+        name,
         deletedAt: null,
       },
     });
 
     if (existingDeviceModel) {
       throw new BadRequestException(
-        'Device model with this name already exists',
+        `Device model with name ${name} already exists`,
       );
     }
 
@@ -46,7 +51,7 @@ export class DeviceModelsService {
     };
   }
 
-  async findOne(id: number, includeParam?: string | string[]) {
+  async findOne(id: string, includeParam?: string | string[]) {
     const include = parseInclude(includeParam);
     const deviceModel = await this.prisma.deviceModel.findFirst({
       where: { id, deletedAt: null },
@@ -54,7 +59,7 @@ export class DeviceModelsService {
     });
 
     if (!deviceModel) {
-      throw new BadRequestException(`DeviceModel with ID ${id} not found`);
+      throw new NotFoundException(`DeviceModel with id ${id} not found`);
     }
 
     return {
@@ -63,13 +68,26 @@ export class DeviceModelsService {
     };
   }
 
-  async update(id: number, updateDeviceModelDto: UpdateDeviceModelDto) {
+  async update(id: string, updateDeviceModelDto: UpdateDeviceModelDto) {
     const deviceModel = await this.prisma.deviceModel.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!deviceModel) {
-      throw new BadRequestException(`DeviceModel with ID ${id} not found`);
+      throw new NotFoundException(`DeviceModel with id ${id} not found`);
+    }
+
+    const { name } = updateDeviceModelDto;
+    const existingDeviceModel = await this.prisma.deviceModel.findFirst({
+      where: {
+        name,
+        deletedAt: null,
+      },
+    });
+    if (existingDeviceModel) {
+      throw new BadRequestException(
+        `Device model with name ${name} already exists`,
+      );
     }
 
     const updatedDeviceModel = await this.prisma.deviceModel.update({
@@ -83,13 +101,13 @@ export class DeviceModelsService {
     };
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     const deviceModel = await this.prisma.deviceModel.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!deviceModel) {
-      throw new BadRequestException(`DeviceModel with ID ${id} not found`);
+      throw new NotFoundException(`DeviceModel with id ${id} not found`);
     }
 
     await this.prisma.deviceModel.update({

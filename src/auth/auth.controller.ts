@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
   UseGuards,
   Res,
+  Inject,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -20,12 +21,14 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 import { AuthGuard } from '@nestjs/passport';
 import { MicrosoftRequest } from 'src/common/interfaces/auth.interface';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    @Inject(ConfigService) private readonly configService: ConfigService,
   ) {}
 
   @Public()
@@ -111,7 +114,10 @@ export class AuthController {
   ): Promise<void> {
     const result = await this.authService.loginWithMicrosoft(req);
 
-    const frontendRedirectUrl = new URL('http://localhost:3000/auth/callback');
+    const frontendRedirectUrl = new URL(
+      this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000') +
+        '/auth/callback',
+    );
     frontendRedirectUrl.searchParams.set('accessToken', result.accessToken);
     frontendRedirectUrl.searchParams.set('refreshToken', result.refreshToken);
     frontendRedirectUrl.searchParams.set('id', result.user.id);

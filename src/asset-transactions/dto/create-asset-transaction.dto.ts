@@ -1,5 +1,6 @@
+import { TransactionType } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsObject, IsOptional, IsString } from 'class-validator';
+import { IsObject, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateAssetTransactionDto {
   @IsOptional()
@@ -10,6 +11,10 @@ export class CreateAssetTransactionDto {
   @IsObject({ message: 'customProperties must be a valid JSON object' })
   @Type(() => Object)
   files?: Record<string, any>;
+
+  @IsString({ message: 'type must be a string' })
+  @MinLength(1, { message: 'type must not be empty' })
+  type: TransactionType;
 
   @IsString({ message: 'assetId must be a string' })
   assetId: string;

@@ -18,6 +18,7 @@ import {
   FilesInterceptor,
 } from '@nestjs/platform-express';
 import { Public } from 'src/common/decorators/public.decorator';
+import { TransactionType } from '@prisma/client';
 
 @Controller('asset-transactions')
 export class AssetTransactionsController {
@@ -81,8 +82,11 @@ export class AssetTransactionsController {
 
   @Public()
   @Get('confirm-request/:id')
-  getConfirmRequest(@Param('id') id: string) {
-    return this.assetTransactionsService.getConfirmRequest(id);
+  getConfirmRequest(
+    @Param('id') id: string,
+    @Query('type') type: TransactionType,
+  ) {
+    return this.assetTransactionsService.getConfirmRequest(id, type);
   }
 
   @Public()
@@ -90,11 +94,16 @@ export class AssetTransactionsController {
   @UseInterceptors(FilesInterceptor('toSignature'))
   confirmRequest(
     @Param('id') id: string,
+    @Query('type') type: TransactionType,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     const toSignatureFile = files?.[0];
 
-    return this.assetTransactionsService.confirmRequest(id, toSignatureFile);
+    return this.assetTransactionsService.confirmRequest(
+      id,
+      type,
+      toSignatureFile,
+    );
   }
 
   @Get('create-handover/:id')

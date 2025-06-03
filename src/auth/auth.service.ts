@@ -73,6 +73,7 @@ export class AuthService {
         isActive: true,
         ipAddress,
         userAgent: userAgent || 'unknown',
+        createdById: user.id,
       },
     });
 
@@ -354,6 +355,7 @@ export class AuthService {
         isActive: true,
         ipAddress,
         userAgent: userAgent || 'unknown',
+        createdById: user.id,
       },
     });
 

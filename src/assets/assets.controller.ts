@@ -7,18 +7,20 @@ import {
   Param,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import { AssetsService } from './assets.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Controller('assets')
 export class AssetsController {
   constructor(private readonly assetsService: AssetsService) {}
 
   @Post()
-  create(@Body() createAssetDto: CreateAssetDto) {
-    return this.assetsService.create(createAssetDto);
+  create(@Req() req: AuthRequest, @Body() createAssetDto: CreateAssetDto) {
+    return this.assetsService.create(req, createAssetDto);
   }
 
   @Get()

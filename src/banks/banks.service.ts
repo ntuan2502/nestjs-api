@@ -6,26 +6,47 @@ import {
 import { CreateBankDto } from './dto/create-bank.dto';
 import { UpdateBankDto } from './dto/update-bank.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { parseInclude } from 'src/common/utils/parseInclude';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class BanksService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createBankDto: CreateBankDto) {
-    const { shortName } = createBankDto;
-    const existingBank = await this.prisma.bank.findFirst({
-      where: { shortName, deletedAt: null },
+  private async findActiveOrFail(id: string) {
+    const data = await this.prisma.bank.findFirst({
+      where: { id, deletedAt: null },
     });
 
-    if (existingBank) {
-      throw new BadRequestException(
-        `Bank with name ${shortName} already exists`,
-      );
+    if (!data) {
+      throw new NotFoundException(`bank with id ${id} not found`);
     }
 
+    return data;
+  }
+
+  private async validateUniqueName(shortName: string, exclude?: string) {
+    const data = await this.prisma.bank.findFirst({
+      where: {
+        shortName,
+        deletedAt: null,
+        ...(exclude ? { NOT: { shortName: exclude } } : {}),
+      },
+    });
+
+    if (data) {
+      throw new BadRequestException(
+        `bank with shortName ${shortName} already exists`,
+      );
+    }
+  }
+
+  async create(req: AuthRequest, createBankDto: CreateBankDto) {
+    const { shortName } = createBankDto;
+    await this.validateUniqueName(shortName);
+
     const bank = await this.prisma.bank.create({
-      data: createBankDto,
+      data: { ...createBankDto, createdById: req.user.sub },
     });
 
     return {
@@ -34,11 +55,15 @@ export class BanksService {
     };
   }
 
-  async findAll(includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findAll(isDeleted: boolean = false) {
+    const whereClause = isDeleted ? undefined : { deletedAt: null };
     const banks = await this.prisma.bank.findMany({
-      where: { deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -48,11 +73,18 @@ export class BanksService {
     };
   }
 
-  async findOne(id: string, includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findOne(id: string, isDeleted: boolean = false) {
+    const whereClause: Prisma.BankWhereInput = { id };
+    if (!isDeleted) {
+      whereClause.deletedAt = null;
+    }
     const bank = await this.prisma.bank.findFirst({
-      where: { id, deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
     });
 
     if (!bank) {
@@ -65,34 +97,17 @@ export class BanksService {
     };
   }
 
-  async update(id: string, updateBankDto: UpdateBankDto) {
-    const bank = await this.prisma.bank.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!bank) {
-      throw new BadRequestException(`Bank with id ${id} already exists`);
-    }
+  async update(req: AuthRequest, id: string, updateBankDto: UpdateBankDto) {
+    await this.findActiveOrFail(id);
 
     const { shortName } = updateBankDto;
-    if (shortName != bank.shortName) {
-      const existingBank = await this.prisma.bank.findFirst({
-        where: {
-          shortName,
-          deletedAt: null,
-        },
-      });
-
-      if (existingBank) {
-        throw new BadRequestException(
-          `Device type with shortName ${shortName} already exists`,
-        );
-      }
+    if (shortName) {
+      await this.validateUniqueName(shortName, id);
     }
 
     const updatedBank = await this.prisma.bank.update({
       where: { id },
-      data: updateBankDto,
+      data: { ...updateBankDto, updatedById: req.user.sub },
     });
 
     return {
@@ -101,18 +116,12 @@ export class BanksService {
     };
   }
 
-  async remove(id: string) {
-    const bank = await this.prisma.bank.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!bank) {
-      throw new NotFoundException(`Bank with id ${id} not found`);
-    }
+  async remove(req: AuthRequest, id: string) {
+    await this.findActiveOrFail(id);
 
     await this.prisma.bank.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedById: req.user.sub },
     });
 
     return {

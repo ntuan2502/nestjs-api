@@ -6,29 +6,47 @@ import {
 import { CreateDeviceModelDto } from './dto/create-device-model.dto';
 import { UpdateDeviceModelDto } from './dto/update-device-model.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { parseInclude } from 'src/common/utils/parseInclude';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class DeviceModelsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createDeviceModelDto: CreateDeviceModelDto) {
-    const { name } = createDeviceModelDto;
-    const existingDeviceModel = await this.prisma.deviceModel.findFirst({
+  private async findActiveOrFail(id: string) {
+    const data = await this.prisma.deviceModel.findFirst({
+      where: { id, deletedAt: null },
+    });
+
+    if (!data) {
+      throw new NotFoundException(`deviceModel with id ${id} not found`);
+    }
+
+    return data;
+  }
+
+  private async validateUniqueName(name: string, excludeId?: string) {
+    const data = await this.prisma.deviceModel.findFirst({
       where: {
         name,
         deletedAt: null,
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
       },
     });
 
-    if (existingDeviceModel) {
+    if (data) {
       throw new BadRequestException(
-        `Device model with name ${name} already exists`,
+        `deviceModel with name ${name} already exists`,
       );
     }
+  }
+
+  async create(req: AuthRequest, createDeviceModelDto: CreateDeviceModelDto) {
+    const { name } = createDeviceModelDto;
+    await this.validateUniqueName(name);
 
     const deviceModel = await this.prisma.deviceModel.create({
-      data: createDeviceModelDto,
+      data: { ...createDeviceModelDto, createdById: req.user.sub },
     });
 
     return {
@@ -37,11 +55,15 @@ export class DeviceModelsService {
     };
   }
 
-  async findAll(includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findAll(isDeleted: boolean = false) {
+    const whereClause = isDeleted ? undefined : { deletedAt: null };
     const deviceModels = await this.prisma.deviceModel.findMany({
-      where: { deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -51,11 +73,18 @@ export class DeviceModelsService {
     };
   }
 
-  async findOne(id: string, includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findOne(id: string, isDeleted: boolean = false) {
+    const whereClause: Prisma.DeviceModelWhereInput = { id };
+    if (!isDeleted) {
+      whereClause.deletedAt = null;
+    }
     const deviceModel = await this.prisma.deviceModel.findFirst({
-      where: { id, deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
     });
 
     if (!deviceModel) {
@@ -68,31 +97,21 @@ export class DeviceModelsService {
     };
   }
 
-  async update(id: string, updateDeviceModelDto: UpdateDeviceModelDto) {
-    const deviceModel = await this.prisma.deviceModel.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!deviceModel) {
-      throw new NotFoundException(`DeviceModel with id ${id} not found`);
-    }
+  async update(
+    req: AuthRequest,
+    id: string,
+    updateDeviceModelDto: UpdateDeviceModelDto,
+  ) {
+    await this.findActiveOrFail(id);
 
     const { name } = updateDeviceModelDto;
-    const existingDeviceModel = await this.prisma.deviceModel.findFirst({
-      where: {
-        name,
-        deletedAt: null,
-      },
-    });
-    if (existingDeviceModel) {
-      throw new BadRequestException(
-        `Device model with name ${name} already exists`,
-      );
+    if (name) {
+      await this.validateUniqueName(name, id);
     }
 
     const updatedDeviceModel = await this.prisma.deviceModel.update({
       where: { id },
-      data: updateDeviceModelDto,
+      data: { ...updateDeviceModelDto, updatedById: req.user.sub },
     });
 
     return {
@@ -101,18 +120,12 @@ export class DeviceModelsService {
     };
   }
 
-  async remove(id: string) {
-    const deviceModel = await this.prisma.deviceModel.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!deviceModel) {
-      throw new NotFoundException(`DeviceModel with id ${id} not found`);
-    }
+  async remove(req: AuthRequest, id: string) {
+    await this.findActiveOrFail(id);
 
     await this.prisma.deviceModel.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedById: req.user.sub },
     });
 
     return {

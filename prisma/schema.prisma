@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -20,9 +14,9 @@ enum Gender {
 
 enum TransactionType {
   TRANSFER // Bàn giao thiết bị từ người này sang người khác
+  RETURN // Trả lại thiết bị cho IT hoặc kho
   REPAIR // Gửi thiết bị đi sửa chữa
   MAINTENANCE // Bảo trì định kỳ
-  RETURN // Trả lại thiết bị cho IT hoặc kho
   DONATION // Tặng thiết bị cho bộ phận khác/tổ chức khác
   DISPOSAL // Thanh lý thiết bị (liquidation)
   LOST // Báo mất thiết bị
@@ -30,23 +24,20 @@ enum TransactionType {
 }
 
 enum TransactionStatus {
-  PENDING // Chờ xử lý (chờ ký, chờ duyệt)
-  IN_PROGRESS // Đang được xử lý (VD: đang sửa chữa, đang vận chuyển)
-  COMPLETED // Hoàn tất giao dịch
-  CANCELLED // Giao dịch đã bị huỷ
+  PENDING
+  PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
-enum TransactionRole {
-  FROM // Người gửi thiết bị đi (khởi tạo hoặc ký)
-  TO // Người nhận thiết bị
+enum TransactionDirection {
+  OUTGOING
+  INCOMING
 }
 
-enum Warranty {
-  ONE
-  TWO
-  THREE
-  FOUR
-  FIVE
+enum UserRole {
+  ADMIN
+  USER
 }
 
 model User {
@@ -57,17 +48,13 @@ model User {
   email       String    @unique
   password    String
   name        String?
-  gender      Gender?
+  gender      Gender    @default(MALE)
   dob         DateTime?
   phone       String?
   address     String?
   avatar      String?
   microsoftId String?
-
-  // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  role        UserRole  @default(USER)
 
   // FK
   officeId     String?
@@ -77,9 +64,61 @@ model User {
   office     Office?     @relation(fields: [officeId], references: [id])
   department Department? @relation(fields: [departmentId], references: [id])
 
+  // Timestamps
+  createdAt   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
+
   // HasMany
-  sessions          Session[]
-  assetTransactions AssetTransaction[]
+  createdUser             User[]             @relation("CreatedByUser")
+  updatedUser             User[]             @relation("UpdatedByUser")
+  deletedUser             User[]             @relation("DeletedByUser")
+  session                 Session[]
+  createdSession          Session[]          @relation("CreatedByUser")
+  updatedSession          Session[]          @relation("UpdatedByUser")
+  deletedSession          Session[]          @relation("DeletedByUser")
+  createdOffice           Office[]           @relation("CreatedByUser")
+  updatedOffice           Office[]           @relation("UpdatedByUser")
+  deletedOffice           Office[]           @relation("DeletedByUser")
+  createdDepartment       Department[]       @relation("CreatedByUser")
+  updatedDepartment       Department[]       @relation("UpdatedByUser")
+  deletedDepartment       Department[]       @relation("DeletedByUser")
+  createdDeviceType       DeviceType[]       @relation("CreatedByUser")
+  updatedDeviceType       DeviceType[]       @relation("UpdatedByUser")
+  deletedDeviceType       DeviceType[]       @relation("DeletedByUser")
+  createdDeviceModel      DeviceModel[]      @relation("CreatedByUser")
+  updatedDeviceModel      DeviceModel[]      @relation("UpdatedByUser")
+  deletedDeviceModel      DeviceModel[]      @relation("DeletedByUser")
+  createdBank             Bank[]             @relation("CreatedByUser")
+  updatedBank             Bank[]             @relation("UpdatedByUser")
+  deletedBank             Bank[]             @relation("DeletedByUser")
+  createdBankAccount      BankAccount[]      @relation("CreatedByUser")
+  updatedBankAccount      BankAccount[]      @relation("UpdatedByUser")
+  deletedBankAccount      BankAccount[]      @relation("DeletedByUser")
+  createdSupplier         Supplier[]         @relation("CreatedByUser")
+  updatedSupplier         Supplier[]         @relation("UpdatedByUser")
+  deletedSupplier         Supplier[]         @relation("DeletedByUser")
+  createdAsset            Asset[]            @relation("CreatedByUser")
+  updatedAsset            Asset[]            @relation("UpdatedByUser")
+  deletedAsset            Asset[]            @relation("DeletedByUser")
+  createdTransactionBatch TransactionBatch[] @relation("CreatedByUser")
+  updatedTransactionBatch TransactionBatch[] @relation("UpdatedByUser")
+  deletedTransactionBatch TransactionBatch[] @relation("DeletedByUser")
+  assetTransaction        AssetTransaction[]
+  createdAssetTransaction AssetTransaction[] @relation("CreatedByUser")
+  updatedAssetTransaction AssetTransaction[] @relation("UpdatedByUser")
+  deletedAssetTransaction AssetTransaction[] @relation("DeletedByUser")
+  createdFile             File[]             @relation("CreatedByUser")
+  updatedFile             File[]             @relation("UpdatedByUser")
+  deletedFile             File[]             @relation("DeletedByUser")
 }
 
 model Session {
@@ -94,19 +133,27 @@ model Session {
   ipAddress             String
   userAgent             String
 
-  // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
   lastUsedAt      DateTime  @default(now())
   lastRefreshedAt DateTime?
 
   // FK
-  userId String?
+  userId String
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
 
   // BelongsTo
-  user User? @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Office {
@@ -114,16 +161,24 @@ model Office {
   id String @id @default(uuid())
 
   // Basic
-  name              String?
-  internationalName String?
-  shortName         String?
-  taxCode           String  @unique
-  address           String?
+  name      String?
+  nameEn    String?
+  shortName String?
+  taxCode   String  @unique
+  address   String?
 
   // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
 
   // HasMany
   users             User[]
@@ -138,9 +193,17 @@ model Department {
   name String @unique
 
   // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
 
   // HasMany
   users             User[]
@@ -155,9 +218,17 @@ model DeviceType {
   name String @unique
 
   // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
 
   // HasMany
   deviceModels DeviceModel[]
@@ -171,16 +242,24 @@ model DeviceModel {
   // Basic
   name String @unique
 
-  // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
   // FK
   deviceTypeId String?
 
   // BelongsTo
   deviceType DeviceType? @relation(fields: [deviceTypeId], references: [id])
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
 
   // HasMany
   assets Asset[]
@@ -195,9 +274,17 @@ model Bank {
   shortName String  @unique
 
   // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
 
   // HasMany
   bankAccounts BankAccount[]
@@ -208,13 +295,8 @@ model BankAccount {
   id String @id @default(uuid())
 
   // Basic
-  accountNumber String
-  accountName   String
-
-  // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  name   String
+  number String
 
   // FK
   supplierId String?
@@ -223,6 +305,19 @@ model BankAccount {
   // BelongsTo
   supplier Supplier? @relation(fields: [supplierId], references: [id])
   bank     Bank?     @relation(fields: [bankId], references: [id])
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
 }
 
 model Supplier {
@@ -236,9 +331,17 @@ model Supplier {
   phone   String?
 
   // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
 
   // HasMany
   bankAccounts BankAccount[]
@@ -253,13 +356,8 @@ model Asset {
   internalCode     String    @unique
   serialNumber     String?
   purchaseDate     DateTime?
-  warranty         Warranty?
+  warranty         Int?
   customProperties Json?
-
-  // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
 
   // FK
   deviceModelId String?
@@ -271,6 +369,49 @@ model Asset {
   deviceType  DeviceType?  @relation(fields: [deviceTypeId], references: [id])
   supplier    Supplier?    @relation(fields: [supplierId], references: [id])
 
+  // Timestamps
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
+
+  // HasMany
+  assetTransactions AssetTransaction[]
+}
+
+model TransactionBatch {
+  // ID
+  id String @id @default(uuid())
+
+  // Basic
+  note String?
+
+  // FK
+  handoverId String?
+
+  // BelongsTo
+  handover File? @relation(fields: [handoverId], references: [id])
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
+
   // HasMany
   assetTransactions AssetTransaction[]
 }
@@ -280,31 +421,64 @@ model AssetTransaction {
   id String @id @default(uuid())
 
   // Basic
-  role   TransactionRole? // enum: FROM, TO
-  type   TransactionType? // enum: TRANSFER, REPAIR, MAINTENANCE, RETURN, etc.
-  status TransactionStatus? // enum: PENDING, COMPLETED, CANCELLED, etc.
-  note   String?
-  files  Json?
-
-  signature String?
+  direction TransactionDirection
+  type      TransactionType
+  status    TransactionStatus    @default(PENDING)
+  note      String?
   signedAt  DateTime?
 
-  handoverFilePath String?
-
-  // Timestamps
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
   // FK
-  assetId      String
-  userId       String?
-  departmentId String?
-  officeId     String?
+  assetId            String
+  userId             String?
+  departmentId       String?
+  officeId           String?
+  transactionBatchId String?
+  signatureId        String?
 
   // BelongsTo
-  asset      Asset?      @relation(fields: [assetId], references: [id])
-  user       User?       @relation(fields: [userId], references: [id])
-  department Department? @relation(fields: [departmentId], references: [id])
-  office     Office?     @relation(fields: [officeId], references: [id])
+  asset            Asset?            @relation(fields: [assetId], references: [id])
+  user             User?             @relation(fields: [userId], references: [id])
+  department       Department?       @relation(fields: [departmentId], references: [id])
+  office           Office?           @relation(fields: [officeId], references: [id])
+  transactionBatch TransactionBatch? @relation(fields: [transactionBatchId], references: [id])
+  signature        File?             @relation(fields: [signatureId], references: [id])
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
+}
+
+model File {
+  // ID
+  id String @id @default(uuid())
+
+  // Basic
+  filePath String
+  fileType String?
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("CreatedByUser", fields: [createdById], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("UpdatedByUser", fields: [updatedById], references: [id])
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
+
+  // HasMany
+  transactionBatch TransactionBatch[]
+  assetTransaction AssetTransaction[]
 }

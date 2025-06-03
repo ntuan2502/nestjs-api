@@ -7,40 +7,45 @@ import {
   Param,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import { OfficesService } from './offices.service';
 import { CreateOfficeDto } from './dto/create-office.dto';
 import { UpdateOfficeDto } from './dto/update-office.dto';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Controller('offices')
 export class OfficesController {
   constructor(private readonly officesService: OfficesService) {}
 
   @Post()
-  create(@Body() createOfficeDto: CreateOfficeDto) {
-    return this.officesService.create(createOfficeDto);
+  create(@Req() req: AuthRequest, @Body() createOfficeDto: CreateOfficeDto) {
+    return this.officesService.create(req, createOfficeDto);
   }
 
   @Get()
-  findAll(@Query('include') includeParam?: string | string[]) {
-    return this.officesService.findAll(includeParam);
+  findAll(@Query('isDeleted') isDeleted?: string) {
+    const shouldIncludeDeleted = isDeleted === 'true';
+    return this.officesService.findAll(shouldIncludeDeleted);
   }
 
   @Get(':id')
-  findOne(
-    @Param('id') id: string,
-    @Query('include') includeParam?: string | string[],
-  ) {
-    return this.officesService.findOne(id, includeParam);
+  findOne(@Param('id') id: string, @Query('isDeleted') isDeleted: string) {
+    const shouldIncludeDeleted = isDeleted === 'true';
+    return this.officesService.findOne(id, shouldIncludeDeleted);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateOfficeDto: UpdateOfficeDto) {
-    return this.officesService.update(id, updateOfficeDto);
+  update(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Body() updateOfficeDto: UpdateOfficeDto,
+  ) {
+    return this.officesService.update(req, id, updateOfficeDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.officesService.remove(id);
+  remove(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.officesService.remove(req, id);
   }
 }

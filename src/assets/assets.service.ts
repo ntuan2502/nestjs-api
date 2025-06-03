@@ -8,12 +8,13 @@ import { UpdateAssetDto } from './dto/update-asset.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { parseInclude } from 'src/common/utils/parseInclude';
 import { parseFilter } from 'src/common/utils/parseFilter';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Injectable()
 export class AssetsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createAssetDto: CreateAssetDto) {
+  async create(req: AuthRequest, createAssetDto: CreateAssetDto) {
     const { internalCode } = createAssetDto;
     const existingAsset = await this.prisma.asset.findFirst({
       where: { internalCode, deletedAt: null },
@@ -26,7 +27,10 @@ export class AssetsService {
     }
 
     const asset = await this.prisma.asset.create({
-      data: createAssetDto,
+      data: {
+        ...createAssetDto,
+        createdById: req.user.sub,
+      },
     });
 
     return {

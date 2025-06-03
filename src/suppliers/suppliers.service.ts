@@ -6,26 +6,47 @@ import {
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { parseInclude } from 'src/common/utils/parseInclude';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class SuppliersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createSupplierDto: CreateSupplierDto) {
-    const { taxCode } = createSupplierDto;
-    const existingSupplier = await this.prisma.supplier.findFirst({
-      where: { taxCode, deletedAt: null },
+  private async findActiveOrFail(id: string) {
+    const data = await this.prisma.supplier.findFirst({
+      where: { id, deletedAt: null },
     });
 
-    if (existingSupplier) {
-      throw new BadRequestException(
-        `Supplier with tax code ${taxCode} already exists`,
-      );
+    if (!data) {
+      throw new NotFoundException(`supplier with id ${id} not found`);
     }
 
+    return data;
+  }
+
+  private async validateUniqueTaxCode(taxCode: string, excludeId?: string) {
+    const data = await this.prisma.supplier.findFirst({
+      where: {
+        taxCode,
+        deletedAt: null,
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      },
+    });
+
+    if (data) {
+      throw new BadRequestException(
+        `supplier with taxCode ${taxCode} already exists`,
+      );
+    }
+  }
+
+  async create(req: AuthRequest, createSupplierDto: CreateSupplierDto) {
+    const { taxCode } = createSupplierDto;
+    await this.validateUniqueTaxCode(taxCode);
+
     const supplier = await this.prisma.supplier.create({
-      data: createSupplierDto,
+      data: { ...createSupplierDto, createdById: req.user.sub },
     });
 
     return {
@@ -34,11 +55,16 @@ export class SuppliersService {
     };
   }
 
-  async findAll(includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findAll(isDeleted: boolean = false) {
+    const whereClause = isDeleted ? undefined : { deletedAt: null };
+
     const suppliers = await this.prisma.supplier.findMany({
-      where: { deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -48,11 +74,20 @@ export class SuppliersService {
     };
   }
 
-  async findOne(id: string, includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findOne(id: string, isDeleted: boolean = false) {
+    const whereClause: Prisma.SupplierWhereInput = { id };
+
+    if (!isDeleted) {
+      whereClause.deletedAt = null;
+    }
+
     const supplier = await this.prisma.supplier.findFirst({
-      where: { id, deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
     });
 
     if (!supplier) {
@@ -65,31 +100,21 @@ export class SuppliersService {
     };
   }
 
-  async update(id: string, updateSupplierDto: UpdateSupplierDto) {
-    const supplier = await this.prisma.supplier.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!supplier) {
-      throw new NotFoundException(`Supplier with id ${id} not found`);
-    }
+  async update(
+    req: AuthRequest,
+    id: string,
+    updateSupplierDto: UpdateSupplierDto,
+  ) {
+    await this.findActiveOrFail(id);
 
     const { taxCode } = updateSupplierDto;
-
-    if (taxCode !== supplier.taxCode) {
-      const existingSupplier = await this.prisma.supplier.findFirst({
-        where: { taxCode, deletedAt: null },
-      });
-      if (existingSupplier) {
-        throw new BadRequestException(
-          `Supplier with tax code ${updateSupplierDto.taxCode} already exists`,
-        );
-      }
+    if (taxCode) {
+      await this.validateUniqueTaxCode(taxCode, id);
     }
 
     const updatedSupplier = await this.prisma.supplier.update({
       where: { id },
-      data: updateSupplierDto,
+      data: { ...updateSupplierDto, updatedById: req.user.sub },
     });
 
     return {
@@ -98,18 +123,12 @@ export class SuppliersService {
     };
   }
 
-  async remove(id: string) {
-    const supplier = await this.prisma.supplier.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!supplier) {
-      throw new NotFoundException(`Supplier with id ${id} not found`);
-    }
+  async remove(req: AuthRequest, id: string) {
+    await this.findActiveOrFail(id);
 
     await this.prisma.supplier.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedById: req.user.sub },
     });
 
     return {

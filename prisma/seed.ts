@@ -1,9 +1,9 @@
 import {
   PrismaClient,
-  TransactionRole,
+  TransactionDirection,
   TransactionStatus,
   TransactionType,
-  Warranty,
+  UserRole,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import {
@@ -19,9 +19,36 @@ import {
   AITAMs,
   assets,
 } from './data';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { ADMIN_ID } from 'src/common/const';
 
 const prisma = new PrismaClient();
+
+async function seedAdmin() {
+  try {
+    const passwordHash = await bcrypt.hash('Amata@123', 10);
+    const admin = await prisma.user.findFirst({
+      where: { email: 'admin@tun.io.vn' },
+    });
+
+    if (admin) throw new BadRequestException(`Admin account already exists`);
+
+    await prisma.user.create({
+      data: {
+        id: ADMIN_ID,
+        name: 'Admin',
+        email: 'admin@tun.io.vn',
+        password: passwordHash,
+        role: UserRole.ADMIN,
+        createdById: ADMIN_ID,
+      },
+    });
+
+    console.log('✅ Admin seeded successfully!');
+  } catch (error) {
+    console.error('Error seeding admin:', error);
+  }
+}
 
 async function seedOffices(): Promise<Map<string, string>> {
   const map = new Map<string, string>();
@@ -35,7 +62,10 @@ async function seedOffices(): Promise<Map<string, string>> {
       const created = await prisma.office.upsert({
         where: { taxCode: office.taxCode },
         update: { ...office },
-        create: { ...office },
+        create: {
+          ...office,
+          createdById: ADMIN_ID,
+        },
       });
       console.log(`Seeded office ${i + 1}/${offices.length}: ${office.name}`);
       map.set(office.shortName, created.id);
@@ -60,7 +90,10 @@ async function seedDepartments(): Promise<Map<string, string>> {
       const created = await prisma.department.upsert({
         where: { name: department.name },
         update: { ...department },
-        create: { ...department },
+        create: {
+          ...department,
+          createdById: ADMIN_ID,
+        },
       });
       console.log(
         `Seeded department ${i + 1}/${departments.length}: ${department.name}`,
@@ -108,6 +141,7 @@ async function seedUser(
           departmentId,
           officeId,
           password: passwordHash,
+          createdById: ADMIN_ID,
         },
       });
       console.log(`Seed user ${i + 1}/${users.length}: ${user.name}`);
@@ -132,7 +166,10 @@ async function seedDeviceTypes(): Promise<Map<string, string>> {
       const created = await prisma.deviceType.upsert({
         where: { name: deviceType.name },
         update: { ...deviceType },
-        create: { ...deviceType },
+        create: {
+          ...deviceType,
+          createdById: ADMIN_ID,
+        },
       });
       console.log(
         `Seeded device type ${i + 1}/${deviceTypes.length}: ${deviceType.name}`,
@@ -159,7 +196,10 @@ async function seedDeviceModels(): Promise<Map<string, string>> {
       const created = await prisma.deviceModel.upsert({
         where: { name: deviceModel.name },
         update: { ...deviceModel },
-        create: { ...deviceModel },
+        create: {
+          ...deviceModel,
+          createdById: ADMIN_ID,
+        },
       });
       console.log(
         `Seeded device model ${i + 1}/${deviceModels.length}: ${deviceModel.name}`,
@@ -194,52 +234,30 @@ async function seedAssets(
       const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
       const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
 
-      let warranty: Warranty = Warranty.ONE;
-      if (dataItem.warranty_duration == 'one year') {
-        warranty = Warranty.ONE;
-      } else if (dataItem.warranty_duration == 'two years') {
-        warranty = Warranty.TWO;
-      } else if (dataItem.warranty_duration == 'three years') {
-        warranty = Warranty.THREE;
-      } else if (dataItem.warranty_duration == 'four years') {
-        warranty = Warranty.FOUR;
-      } else if (dataItem.warranty_duration == 'five years') {
-        warranty = Warranty.FIVE;
-      } else {
-        warranty = Warranty.FIVE;
-      }
+      const data = {
+        internalCode: dataItem.code,
+        serialNumber: dataItem.serial_number,
+        purchaseDate: new Date(dataItem.purchase_date),
+        warranty: dataItem.warranty_duration,
+        customProperties: {
+          macAddress: dataItem.mac_address,
+          cpu: dataItem.cpu,
+          ram: dataItem.ram,
+          hardDrive: dataItem.hard_drive,
+          osType: dataItem.os_type,
+        },
+        deviceTypeId,
+        deviceModelId,
+      };
 
       const created = await prisma.asset.upsert({
         where: { internalCode: dataItem.code },
         update: {
-          internalCode: dataItem.code,
-          serialNumber: dataItem.serial_number,
-          purchaseDate: new Date(dataItem.purchase_date),
-          warranty,
-          customProperties: {
-            macAddress: dataItem.mac_address,
-            cpu: dataItem.cpu,
-            ram: dataItem.ram,
-            hardDrive: dataItem.hard_drive,
-            osType: dataItem.os_type,
-          },
-          deviceTypeId,
-          deviceModelId,
+          ...data,
         },
         create: {
-          internalCode: dataItem.code,
-          serialNumber: dataItem.serial_number,
-          purchaseDate: new Date(dataItem.purchase_date),
-          warranty,
-          customProperties: {
-            macAddress: dataItem.mac_address,
-            cpu: dataItem.cpu,
-            ram: dataItem.ram,
-            hardDrive: dataItem.hard_drive,
-            osType: dataItem.os_type,
-          },
-          deviceTypeId,
-          deviceModelId,
+          ...data,
+          createdById: ADMIN_ID,
         },
       });
       console.log(
@@ -254,52 +272,30 @@ async function seedAssets(
       const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
       const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
 
-      let warranty: Warranty = Warranty.ONE;
-      if (dataItem.warranty_duration == 'one year') {
-        warranty = Warranty.ONE;
-      } else if (dataItem.warranty_duration == 'two years') {
-        warranty = Warranty.TWO;
-      } else if (dataItem.warranty_duration == 'three years') {
-        warranty = Warranty.THREE;
-      } else if (dataItem.warranty_duration == 'four years') {
-        warranty = Warranty.FOUR;
-      } else if (dataItem.warranty_duration == 'five years') {
-        warranty = Warranty.FIVE;
-      } else {
-        warranty = Warranty.FIVE;
-      }
+      const data = {
+        internalCode: dataItem.code,
+        serialNumber: dataItem.serial_number,
+        purchaseDate: new Date(dataItem.purchase_date),
+        warranty: dataItem.warranty_duration,
+        customProperties: {
+          macAddress: dataItem.mac_address,
+          cpu: dataItem.cpu,
+          ram: dataItem.ram,
+          hardDrive: dataItem.hard_drive,
+          osType: dataItem.os_type,
+        },
+        deviceTypeId,
+        deviceModelId,
+      };
 
       const created = await prisma.asset.upsert({
         where: { internalCode: dataItem.code },
         update: {
-          internalCode: dataItem.code,
-          serialNumber: dataItem.serial_number,
-          purchaseDate: new Date(dataItem.purchase_date),
-          warranty,
-          customProperties: {
-            macAddress: dataItem.mac_address,
-            cpu: dataItem.cpu,
-            ram: dataItem.ram,
-            hardDrive: dataItem.hard_drive,
-            osType: dataItem.os_type,
-          },
-          deviceTypeId,
-          deviceModelId,
+          ...data,
         },
         create: {
-          internalCode: dataItem.code,
-          serialNumber: dataItem.serial_number,
-          purchaseDate: new Date(dataItem.purchase_date),
-          warranty: Warranty.FIVE,
-          customProperties: {
-            macAddress: dataItem.mac_address,
-            cpu: dataItem.cpu,
-            ram: dataItem.ram,
-            hardDrive: dataItem.hard_drive,
-            osType: dataItem.os_type,
-          },
-          deviceTypeId,
-          deviceModelId,
+          ...data,
+          createdById: ADMIN_ID,
         },
       });
       console.log(
@@ -314,52 +310,30 @@ async function seedAssets(
       const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
       const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
 
-      let warranty: Warranty = Warranty.ONE;
-      if (dataItem.warranty_duration == 'one year') {
-        warranty = Warranty.ONE;
-      } else if (dataItem.warranty_duration == 'two years') {
-        warranty = Warranty.TWO;
-      } else if (dataItem.warranty_duration == 'three years') {
-        warranty = Warranty.THREE;
-      } else if (dataItem.warranty_duration == 'four years') {
-        warranty = Warranty.FOUR;
-      } else if (dataItem.warranty_duration == 'five years') {
-        warranty = Warranty.FIVE;
-      } else {
-        warranty = Warranty.FIVE;
-      }
+      const data = {
+        internalCode: dataItem.code,
+        serialNumber: dataItem.serial_number,
+        purchaseDate: new Date(dataItem.purchase_date),
+        warranty: dataItem.warranty_duration,
+        customProperties: {
+          macAddress: dataItem.mac_address,
+          cpu: dataItem.cpu,
+          ram: dataItem.ram,
+          hardDrive: dataItem.hard_drive,
+          osType: dataItem.os_type,
+        },
+        deviceTypeId,
+        deviceModelId,
+      };
 
       const created = await prisma.asset.upsert({
         where: { internalCode: dataItem.code },
         update: {
-          internalCode: dataItem.code,
-          serialNumber: dataItem.serial_number,
-          purchaseDate: new Date(dataItem.purchase_date),
-          warranty,
-          customProperties: {
-            macAddress: dataItem.mac_address,
-            cpu: dataItem.cpu,
-            ram: dataItem.ram,
-            hardDrive: dataItem.hard_drive,
-            osType: dataItem.os_type,
-          },
-          deviceTypeId,
-          deviceModelId,
+          ...data,
         },
         create: {
-          internalCode: dataItem.code,
-          serialNumber: dataItem.serial_number,
-          purchaseDate: new Date(dataItem.purchase_date),
-          warranty: Warranty.FIVE,
-          customProperties: {
-            macAddress: dataItem.mac_address,
-            cpu: dataItem.cpu,
-            ram: dataItem.ram,
-            hardDrive: dataItem.hard_drive,
-            osType: dataItem.os_type,
-          },
-          deviceTypeId,
-          deviceModelId,
+          ...data,
+          createdById: ADMIN_ID,
         },
       });
       console.log(
@@ -374,52 +348,30 @@ async function seedAssets(
       const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
       const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
 
-      let warranty: Warranty = Warranty.ONE;
-      if (dataItem.warranty_duration == 'one year') {
-        warranty = Warranty.ONE;
-      } else if (dataItem.warranty_duration == 'two years') {
-        warranty = Warranty.TWO;
-      } else if (dataItem.warranty_duration == 'three years') {
-        warranty = Warranty.THREE;
-      } else if (dataItem.warranty_duration == 'four years') {
-        warranty = Warranty.FOUR;
-      } else if (dataItem.warranty_duration == 'five years') {
-        warranty = Warranty.FIVE;
-      } else {
-        warranty = Warranty.FIVE;
-      }
+      const data = {
+        internalCode: dataItem.code,
+        serialNumber: dataItem.serial_number,
+        purchaseDate: new Date(dataItem.purchase_date),
+        warranty: dataItem.warranty_duration,
+        customProperties: {
+          macAddress: dataItem.mac_address,
+          cpu: dataItem.cpu,
+          ram: dataItem.ram,
+          hardDrive: dataItem.hard_drive,
+          osType: dataItem.os_type,
+        },
+        deviceTypeId,
+        deviceModelId,
+      };
 
       const created = await prisma.asset.upsert({
         where: { internalCode: dataItem.code },
         update: {
-          internalCode: dataItem.code,
-          serialNumber: dataItem.serial_number,
-          purchaseDate: new Date(dataItem.purchase_date),
-          warranty,
-          customProperties: {
-            macAddress: dataItem.mac_address,
-            cpu: dataItem.cpu,
-            ram: dataItem.ram,
-            hardDrive: dataItem.hard_drive,
-            osType: dataItem.os_type,
-          },
-          deviceTypeId,
-          deviceModelId,
+          ...data,
         },
         create: {
-          internalCode: dataItem.code,
-          serialNumber: dataItem.serial_number,
-          purchaseDate: new Date(dataItem.purchase_date),
-          warranty: Warranty.FIVE,
-          customProperties: {
-            macAddress: dataItem.mac_address,
-            cpu: dataItem.cpu,
-            ram: dataItem.ram,
-            hardDrive: dataItem.hard_drive,
-            osType: dataItem.os_type,
-          },
-          deviceTypeId,
-          deviceModelId,
+          ...data,
+          createdById: ADMIN_ID,
         },
       });
       console.log(
@@ -434,52 +386,30 @@ async function seedAssets(
       const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
       const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
 
-      let warranty: Warranty = Warranty.ONE;
-      if (dataItem.warranty_duration == 'one year') {
-        warranty = Warranty.ONE;
-      } else if (dataItem.warranty_duration == 'two years') {
-        warranty = Warranty.TWO;
-      } else if (dataItem.warranty_duration == 'three years') {
-        warranty = Warranty.THREE;
-      } else if (dataItem.warranty_duration == 'four years') {
-        warranty = Warranty.FOUR;
-      } else if (dataItem.warranty_duration == 'five years') {
-        warranty = Warranty.FIVE;
-      } else {
-        warranty = Warranty.FIVE;
-      }
+      const data = {
+        internalCode: dataItem.code,
+        serialNumber: dataItem.serial_number,
+        purchaseDate: new Date(dataItem.purchase_date),
+        warranty: dataItem.warranty_duration,
+        customProperties: {
+          macAddress: dataItem.mac_address,
+          cpu: dataItem.cpu,
+          ram: dataItem.ram,
+          hardDrive: dataItem.hard_drive,
+          osType: dataItem.os_type,
+        },
+        deviceTypeId,
+        deviceModelId,
+      };
 
       const created = await prisma.asset.upsert({
         where: { internalCode: dataItem.code },
         update: {
-          internalCode: dataItem.code,
-          serialNumber: dataItem.serial_number,
-          purchaseDate: new Date(dataItem.purchase_date),
-          warranty,
-          customProperties: {
-            macAddress: dataItem.mac_address,
-            cpu: dataItem.cpu,
-            ram: dataItem.ram,
-            hardDrive: dataItem.hard_drive,
-            osType: dataItem.os_type,
-          },
-          deviceTypeId,
-          deviceModelId,
+          ...data,
         },
         create: {
-          internalCode: dataItem.code,
-          serialNumber: dataItem.serial_number,
-          purchaseDate: new Date(dataItem.purchase_date),
-          warranty: Warranty.FIVE,
-          customProperties: {
-            macAddress: dataItem.mac_address,
-            cpu: dataItem.cpu,
-            ram: dataItem.ram,
-            hardDrive: dataItem.hard_drive,
-            osType: dataItem.os_type,
-          },
-          deviceTypeId,
-          deviceModelId,
+          ...data,
+          createdById: ADMIN_ID,
         },
       });
       console.log(
@@ -536,15 +466,23 @@ async function seedAssetTransaction() {
         type = TransactionType.OTHER;
       }
 
+      const batch = await prisma.transactionBatch.create({
+        data: {
+          createdById: ADMIN_ID,
+        },
+      });
+
       await prisma.assetTransaction.create({
         data: {
           assetId: getAsset.id,
           userId: getUser.id,
           departmentId: getUser.departmentId,
           officeId: getUser.officeId,
-          role: TransactionRole.TO,
+          batchId: batch.id,
+          direction: TransactionDirection.INCOMING,
           type,
           status: TransactionStatus.COMPLETED,
+          createdById: ADMIN_ID,
         },
       });
       console.log(`Seeded assetTransaction ${i + 1}/${assets.length}`);
@@ -559,7 +497,9 @@ async function seedAssetTransaction() {
 async function main() {
   const args = process.argv.slice(2);
 
-  if (args.includes('--office')) {
+  if (args.includes('--admin')) {
+    await seedAdmin();
+  } else if (args.includes('--office')) {
     await seedOffices();
   } else if (args.includes('--department')) {
     await seedDepartments();
@@ -577,8 +517,18 @@ async function main() {
     await seedAssets(deviceTypeMap, deviceModelMap);
   } else if (args.includes('--assetTransaction')) {
     await seedAssetTransaction();
+  } else if (args.includes('--all')) {
+    await seedAdmin();
+    const officeMap = await seedOffices();
+    const departmentMap = await seedDepartments();
+    await seedUser(officeMap, departmentMap);
+    const deviceTypeMap = await seedDeviceTypes();
+    const deviceModelMap = await seedDeviceModels();
+    await seedAssets(deviceTypeMap, deviceModelMap);
+    await seedAssetTransaction();
   } else {
     console.log('Please specify a seed type. Available options:');
+    console.log('  bun run seed --admin');
     console.log('  bun run seed --office');
     console.log('  bun run seed --department');
     console.log('  bun run seed --user');
@@ -586,6 +536,7 @@ async function main() {
     console.log('  bun run seed --device-model');
     console.log('  bun run seed --asset');
     console.log('  bun run seed --assetTransaction');
+    console.log('  bun run seed --all');
     process.exit(1);
   }
 }

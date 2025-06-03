@@ -9,6 +9,7 @@ import {
   Query,
   UseInterceptors,
   UploadedFiles,
+  Req,
 } from '@nestjs/common';
 import { AssetTransactionsService } from './asset-transactions.service';
 import { CreateAssetTransactionDto } from './dto/create-asset-transaction.dto';
@@ -19,6 +20,7 @@ import {
 } from '@nestjs/platform-express';
 import { Public } from 'src/common/decorators/public.decorator';
 import { TransactionType } from '@prisma/client';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Controller('asset-transactions')
 export class AssetTransactionsController {
@@ -27,8 +29,11 @@ export class AssetTransactionsController {
   ) {}
 
   @Post()
-  create(@Body() createAssetTransactionDto: CreateAssetTransactionDto) {
-    return this.assetTransactionsService.create(createAssetTransactionDto);
+  create(
+    @Req() req: AuthRequest,
+    @Body() createAssetTransactionDto: CreateAssetTransactionDto,
+  ) {
+    return this.assetTransactionsService.create(req, createAssetTransactionDto);
   }
 
   @Get()
@@ -69,12 +74,14 @@ export class AssetTransactionsController {
   @Post('create-request')
   @UseInterceptors(FilesInterceptor('fromSignature'))
   createRequest(
+    @Req() req: AuthRequest,
     @Body() createAssetTransactionDto: CreateAssetTransactionDto,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     const fromSignatureFile = files?.[0];
 
     return this.assetTransactionsService.createRequest(
+      req,
       createAssetTransactionDto,
       fromSignatureFile,
     );
@@ -104,10 +111,5 @@ export class AssetTransactionsController {
       type,
       toSignatureFile,
     );
-  }
-
-  @Get('create-handover/:id')
-  createHandover(@Param('id') id: string) {
-    return this.assetTransactionsService.createHandover(id);
   }
 }

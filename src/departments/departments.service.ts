@@ -6,26 +6,47 @@ import {
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { parseInclude } from 'src/common/utils/parseInclude';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class DepartmentsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createDepartmentDto: CreateDepartmentDto) {
-    const { name } = createDepartmentDto;
-    const existingDepartment = await this.prisma.department.findFirst({
-      where: { name, deletedAt: null },
+  private async findActiveOrFail(id: string) {
+    const data = await this.prisma.department.findFirst({
+      where: { id, deletedAt: null },
     });
 
-    if (existingDepartment) {
-      throw new BadRequestException(
-        `Department with name ${name} already exists`,
-      );
+    if (!data) {
+      throw new NotFoundException(`department with id ${id} not found`);
     }
 
+    return data;
+  }
+
+  private async validateUniqueName(name: string, excludeId?: string) {
+    const data = await this.prisma.department.findFirst({
+      where: {
+        name,
+        deletedAt: null,
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      },
+    });
+
+    if (data) {
+      throw new BadRequestException(
+        `department with name ${name} already exists`,
+      );
+    }
+  }
+
+  async create(req: AuthRequest, createDepartmentDto: CreateDepartmentDto) {
+    const { name } = createDepartmentDto;
+    await this.validateUniqueName(name);
+
     const department = await this.prisma.department.create({
-      data: createDepartmentDto,
+      data: { ...createDepartmentDto, createdById: req.user.sub },
     });
 
     return {
@@ -34,11 +55,15 @@ export class DepartmentsService {
     };
   }
 
-  async findAll(includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findAll(isDeleted: boolean = false) {
+    const whereClause = isDeleted ? undefined : { deletedAt: null };
     const departments = await this.prisma.department.findMany({
-      where: { deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -48,11 +73,18 @@ export class DepartmentsService {
     };
   }
 
-  async findOne(id: string, includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findOne(id: string, isDeleted: boolean = false) {
+    const whereClause: Prisma.DepartmentWhereInput = { id };
+    if (!isDeleted) {
+      whereClause.deletedAt = null;
+    }
     const department = await this.prisma.department.findFirst({
-      where: { id, deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
     });
 
     if (!department) {
@@ -65,31 +97,21 @@ export class DepartmentsService {
     };
   }
 
-  async update(id: string, updateDepartmentDto: UpdateDepartmentDto) {
-    const department = await this.prisma.department.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!department) {
-      throw new NotFoundException(`Department with id ${id} not found`);
-    }
+  async update(
+    req: AuthRequest,
+    id: string,
+    updateDepartmentDto: UpdateDepartmentDto,
+  ) {
+    await this.findActiveOrFail(id);
 
     const { name } = updateDepartmentDto;
-    const existingDepartment = await this.prisma.department.findFirst({
-      where: {
-        name,
-        deletedAt: null,
-      },
-    });
-    if (existingDepartment) {
-      throw new BadRequestException(
-        `Department with name ${name} already exists`,
-      );
+    if (name) {
+      await this.validateUniqueName(name, id);
     }
 
     const updatedDepartment = await this.prisma.department.update({
       where: { id },
-      data: updateDepartmentDto,
+      data: { ...updateDepartmentDto, updatedById: req.user.sub },
     });
 
     return {
@@ -98,18 +120,12 @@ export class DepartmentsService {
     };
   }
 
-  async remove(id: string) {
-    const department = await this.prisma.department.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!department) {
-      throw new NotFoundException(`Department with id ${id} not found`);
-    }
+  async remove(req: AuthRequest, id: string) {
+    await this.findActiveOrFail(id);
 
     await this.prisma.department.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedById: req.user.sub },
     });
 
     return {

@@ -25,12 +25,12 @@ export class DeviceModelsService {
     return data;
   }
 
-  private async validateUniqueName(name: string, excludeId?: string) {
+  private async validateUnique(name: string, exclude?: string) {
     const data = await this.prisma.deviceModel.findFirst({
       where: {
         name,
         deletedAt: null,
-        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        ...(exclude ? { NOT: { id: exclude } } : {}),
       },
     });
 
@@ -43,7 +43,7 @@ export class DeviceModelsService {
 
   async create(req: AuthRequest, createDeviceModelDto: CreateDeviceModelDto) {
     const { name } = createDeviceModelDto;
-    await this.validateUniqueName(name);
+    await this.validateUnique(name);
 
     const deviceModel = await this.prisma.deviceModel.create({
       data: { ...createDeviceModelDto, createdById: req.user.sub },
@@ -106,7 +106,7 @@ export class DeviceModelsService {
 
     const { name } = updateDeviceModelDto;
     if (name) {
-      await this.validateUniqueName(name, id);
+      await this.validateUnique(name, id);
     }
 
     const updatedDeviceModel = await this.prisma.deviceModel.update({

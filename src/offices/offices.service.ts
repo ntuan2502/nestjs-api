@@ -25,12 +25,12 @@ export class OfficesService {
     return data;
   }
 
-  private async validateUniqueTaxCode(taxCode: string, excludeId?: string) {
+  private async validateUnique(taxCode: string, exclude?: string) {
     const data = await this.prisma.office.findFirst({
       where: {
         taxCode,
         deletedAt: null,
-        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        ...(exclude ? { NOT: { id: exclude } } : {}),
       },
     });
 
@@ -43,7 +43,7 @@ export class OfficesService {
 
   async create(req: AuthRequest, createOfficeDto: CreateOfficeDto) {
     const { taxCode } = createOfficeDto;
-    await this.validateUniqueTaxCode(taxCode);
+    await this.validateUnique(taxCode);
 
     const office = await this.prisma.office.create({
       data: { ...createOfficeDto, createdById: req.user.sub },
@@ -104,7 +104,7 @@ export class OfficesService {
 
     const { taxCode } = updateOfficeDto;
     if (taxCode) {
-      await this.validateUniqueTaxCode(taxCode, id);
+      await this.validateUnique(taxCode, id);
     }
 
     const updateOffice = await this.prisma.office.update({

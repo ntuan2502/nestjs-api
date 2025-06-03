@@ -25,17 +25,13 @@ export class BankAccountsService {
     return data;
   }
 
-  private async validateUniqueName(
-    name: string,
-    number: string,
-    excludeId?: string,
-  ) {
+  private async validateUnique(name: string, number: string, exclude?: string) {
     const data = await this.prisma.bankAccount.findFirst({
       where: {
         name,
         number,
         deletedAt: null,
-        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        ...(exclude ? { NOT: { id: exclude } } : {}),
       },
     });
 
@@ -48,7 +44,7 @@ export class BankAccountsService {
 
   async create(req: AuthRequest, createBankAccountDto: CreateBankAccountDto) {
     const { name, number } = createBankAccountDto;
-    await this.validateUniqueName(name, number);
+    await this.validateUnique(name, number);
 
     const bankAccount = await this.prisma.bankAccount.create({
       data: { ...createBankAccountDto, createdById: req.user.sub },
@@ -111,7 +107,7 @@ export class BankAccountsService {
 
     const { name, number } = updateBankAccountDto;
     if (name && number) {
-      await this.validateUniqueName(name, number, id);
+      await this.validateUnique(name, number, id);
     }
 
     const updatedBank = await this.prisma.bankAccount.update({

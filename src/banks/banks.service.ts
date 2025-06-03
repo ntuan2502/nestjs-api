@@ -25,12 +25,12 @@ export class BanksService {
     return data;
   }
 
-  private async validateUniqueName(shortName: string, exclude?: string) {
+  private async validateUnique(shortName: string, exclude?: string) {
     const data = await this.prisma.bank.findFirst({
       where: {
         shortName,
         deletedAt: null,
-        ...(exclude ? { NOT: { shortName: exclude } } : {}),
+        ...(exclude ? { NOT: { id: exclude } } : {}),
       },
     });
 
@@ -43,7 +43,7 @@ export class BanksService {
 
   async create(req: AuthRequest, createBankDto: CreateBankDto) {
     const { shortName } = createBankDto;
-    await this.validateUniqueName(shortName);
+    await this.validateUnique(shortName);
 
     const bank = await this.prisma.bank.create({
       data: { ...createBankDto, createdById: req.user.sub },
@@ -102,7 +102,7 @@ export class BanksService {
 
     const { shortName } = updateBankDto;
     if (shortName) {
-      await this.validateUniqueName(shortName, id);
+      await this.validateUnique(shortName, id);
     }
 
     const updatedBank = await this.prisma.bank.update({

@@ -7,11 +7,13 @@ import {
   Param,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Public } from 'src/common/decorators/public.decorator';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Controller('users')
 export class UsersController {
@@ -19,30 +21,33 @@ export class UsersController {
 
   @Public()
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  create(@Req() req: AuthRequest, @Body() createUserDto: CreateUserDto) {
+    return this.usersService.create(req, createUserDto);
   }
 
   @Get()
-  findAll(@Query('include') include?: string | string[]) {
-    return this.usersService.findAll(include);
+  findAll(@Query('isDeleted') isDeleted?: string) {
+    const shouldIncludeDeleted = isDeleted === 'true';
+    return this.usersService.findAll(shouldIncludeDeleted);
   }
 
   @Get(':id')
-  findOne(
-    @Param('id') id: string,
-    @Query('include') include?: string | string[],
-  ) {
-    return this.usersService.findOne(id, include);
+  findOne(@Param('id') id: string, @Query('isDeleted') isDeleted: string) {
+    const shouldIncludeDeleted = isDeleted === 'true';
+    return this.usersService.findOne(id, shouldIncludeDeleted);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
+  update(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.usersService.update(req, id, updateUserDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
+  remove(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.usersService.remove(req, id);
   }
 }

@@ -8,37 +8,52 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { omitFields } from 'src/common/utils/omit';
-import { parseInclude } from 'src/common/utils/parseInclude';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto) {
-    const { email, password, ...rest } = createUserDto;
-
-    const existingUser = await this.prisma.user.findFirst({
-      where: { email },
+  private async findActiveOrFail(id: string) {
+    const data = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
     });
 
-    if (existingUser) {
-      throw new BadRequestException('Email already exists');
+    if (!data) {
+      throw new NotFoundException(`user with id ${id} not found`);
     }
 
-    let constPassword = password || '';
+    return data;
+  }
 
-    if (!password) {
-      constPassword = 'Amata@123';
-      // throw new BadRequestException('Password is required');
+  private async validateUnique(email: string, exclude?: string) {
+    const data = await this.prisma.user.findFirst({
+      where: {
+        email,
+        deletedAt: null,
+        ...(exclude ? { NOT: { id: exclude } } : {}),
+      },
+    });
+
+    if (data) {
+      throw new BadRequestException(`user with email ${email} already exists`);
     }
+  }
 
-    const hashedPassword = await bcrypt.hash(constPassword, 10);
+  async create(req: AuthRequest, createUserDto: CreateUserDto) {
+    const { email, password, ...rest } = createUserDto;
+    await this.validateUnique(email);
+
+    const defaultPassword = password || 'Amata@123';
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
     const user = await this.prisma.user.create({
       data: {
         ...rest,
         email,
         password: hashedPassword,
+        createdById: req.user.sub,
       },
     });
 
@@ -48,11 +63,16 @@ export class UsersService {
     };
   }
 
-  async findAll(includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findAll(isDeleted: boolean = false) {
+    const whereClause = isDeleted ? undefined : { deletedAt: null };
+
     const users = await this.prisma.user.findMany({
-      where: { deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -64,12 +84,20 @@ export class UsersService {
     };
   }
 
-  async findOne(id: string, includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findOne(id: string, isDeleted: boolean = false) {
+    const whereClause: Prisma.UserWhereInput = { id };
+
+    if (!isDeleted) {
+      whereClause.deletedAt = null;
+    }
 
     const user = await this.prisma.user.findFirst({
-      where: { id, deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
     });
 
     if (!user) {
@@ -82,31 +110,20 @@ export class UsersService {
     };
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
-    const user = await this.prisma.user.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
-    }
+  async update(req: AuthRequest, id: string, updateUserDto: UpdateUserDto) {
+    await this.findActiveOrFail(id);
 
     const { email, password: _password, ...rest } = updateUserDto;
 
-    if (email !== user.email) {
-      const existingUser = await this.prisma.user.findFirst({
-        where: { email, deletedAt: null },
-      });
-
-      if (existingUser) {
-        throw new BadRequestException('Email already exists');
-      }
+    if (email) {
+      await this.validateUnique(email, id);
     }
 
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data: {
         ...rest,
+        updatedById: req.user.sub,
       },
     });
 
@@ -116,18 +133,12 @@ export class UsersService {
     };
   }
 
-  async remove(id: string) {
-    const user = await this.prisma.user.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
-    }
+  async remove(req: AuthRequest, id: string) {
+    await this.findActiveOrFail(id);
 
     await this.prisma.user.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedById: req.user.sub },
     });
     return {
       message: 'User deleted successfully',

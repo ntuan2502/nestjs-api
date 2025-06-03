@@ -25,12 +25,12 @@ export class DepartmentsService {
     return data;
   }
 
-  private async validateUniqueName(name: string, excludeId?: string) {
+  private async validateUnique(name: string, exclude?: string) {
     const data = await this.prisma.department.findFirst({
       where: {
         name,
         deletedAt: null,
-        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        ...(exclude ? { NOT: { id: exclude } } : {}),
       },
     });
 
@@ -43,7 +43,7 @@ export class DepartmentsService {
 
   async create(req: AuthRequest, createDepartmentDto: CreateDepartmentDto) {
     const { name } = createDepartmentDto;
-    await this.validateUniqueName(name);
+    await this.validateUnique(name);
 
     const department = await this.prisma.department.create({
       data: { ...createDepartmentDto, createdById: req.user.sub },
@@ -106,7 +106,7 @@ export class DepartmentsService {
 
     const { name } = updateDepartmentDto;
     if (name) {
-      await this.validateUniqueName(name, id);
+      await this.validateUnique(name, id);
     }
 
     const updatedDepartment = await this.prisma.department.update({

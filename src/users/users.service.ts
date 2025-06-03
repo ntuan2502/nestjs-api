@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { omitFields } from 'src/common/utils/omit';
 import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 import { Prisma } from '@prisma/client';
+import { DEFAULT_PASSWORD } from 'src/common/const';
 
 @Injectable()
 export class UsersService {
@@ -45,7 +46,7 @@ export class UsersService {
     const { email, password, ...rest } = createUserDto;
     await this.validateUnique(email);
 
-    const defaultPassword = password || 'Amata@123';
+    const defaultPassword = password || DEFAULT_PASSWORD;
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
     const user = await this.prisma.user.create({

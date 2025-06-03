@@ -40,7 +40,7 @@ export class AuthController {
   @Public()
   @Post('register')
   register(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+    return this.authService.register(createUserDto);
   }
 
   @Public()

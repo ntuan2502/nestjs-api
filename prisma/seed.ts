@@ -20,13 +20,13 @@ import {
   assets,
 } from './data';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { ADMIN_ID } from 'src/common/const';
+import { ADMIN_ID, DEFAULT_PASSWORD } from 'src/common/const';
 
 const prisma = new PrismaClient();
 
 async function seedAdmin() {
   try {
-    const passwordHash = await bcrypt.hash('Amata@123', 10);
+    const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
     const admin = await prisma.user.findFirst({
       where: { email: 'admin@tun.io.vn' },
     });
@@ -118,7 +118,7 @@ async function seedUser(
     // await prisma.$executeRaw`TRUNCATE TABLE "User" RESTART IDENTITY CASCADE`;
     // console.log('✅ Cleared existing users and reset IDs');
 
-    const passwordHash = await bcrypt.hash('Amata@123', 10);
+    const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
     for (let i = 0; i < users.length; i++) {
       const user = users[i];

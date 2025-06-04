@@ -25,27 +25,30 @@ export class AssetsController {
 
   @Get()
   findAll(
-    @Query('include') includeParam?: string | string[],
+    @Query('isDeleted') isDeleted?: string,
     @Query('filter') filter?: string | string[],
   ) {
-    return this.assetsService.findAll(includeParam, filter);
+    const shouldIncludeDeleted = isDeleted === 'true';
+    return this.assetsService.findAll(shouldIncludeDeleted, filter);
   }
 
   @Get(':id')
-  findOne(
-    @Param('id') id: string,
-    @Query('include') includeParam?: string | string[],
-  ) {
-    return this.assetsService.findOne(id, includeParam);
+  findOne(@Param('id') id: string, @Query('isDeleted') isDeleted: string) {
+    const shouldIncludeDeleted = isDeleted === 'true';
+    return this.assetsService.findOne(id, shouldIncludeDeleted);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAssetDto: UpdateAssetDto) {
-    return this.assetsService.update(id, updateAssetDto);
+  update(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Body() updateAssetDto: UpdateAssetDto,
+  ) {
+    return this.assetsService.update(req, id, updateAssetDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.assetsService.remove(id);
+  remove(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.assetsService.remove(req, id);
   }
 }

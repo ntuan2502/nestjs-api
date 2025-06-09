@@ -73,6 +73,10 @@ export class UsersService {
         createdBy: { select: { id: true, email: true, name: true } },
         updatedBy: { select: { id: true, email: true, name: true } },
         deletedBy: { select: { id: true, email: true, name: true } },
+        department: { select: { id: true, name: true } },
+        office: {
+          select: { id: true, name: true, nameEn: true, shortName: true },
+        },
       },
       orderBy: { name: 'asc' },
     });
@@ -98,6 +102,10 @@ export class UsersService {
         createdBy: { select: { id: true, email: true, name: true } },
         updatedBy: { select: { id: true, email: true, name: true } },
         deletedBy: { select: { id: true, email: true, name: true } },
+        department: { select: { id: true, name: true } },
+        office: {
+          select: { id: true, name: true, nameEn: true, shortName: true },
+        },
       },
     });
 

@@ -6,13 +6,13 @@ import {
 import { CreateAssetTransactionDto } from './dto/create-asset-transaction.dto';
 import { UpdateAssetTransactionDto } from './dto/update-asset-transaction.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { parseInclude } from 'src/common/utils/parseInclude';
 import { parseFilter } from 'src/common/utils/parseFilter';
 import { normalizePath } from 'src/common/utils/function';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as puppeteer from 'puppeteer';
 import {
+  Prisma,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
@@ -24,6 +24,19 @@ import { ADMIN_ID } from 'src/common/const';
 @Injectable()
 export class AssetTransactionsService {
   constructor(private prisma: PrismaService) {}
+
+  private async findActiveOrFail(id: string) {
+    const data = await this.prisma.asset.findFirst({
+      where: { id, deletedAt: null },
+    });
+
+    if (!data) {
+      throw new NotFoundException(`assetTransaction with id ${id} not found`);
+    }
+
+    return data;
+  }
+
   async create(
     req: AuthRequest,
     createAssetTransactionDto: CreateAssetTransactionDto,
@@ -33,6 +46,9 @@ export class AssetTransactionsService {
     const assetTransaction = await this.prisma.assetTransaction.create({
       data: {
         ...data,
+        direction: TransactionDirection.INCOMING,
+        status: TransactionStatus.COMPLETED,
+
         createdById: req.user.sub,
       },
     });
@@ -43,26 +59,67 @@ export class AssetTransactionsService {
     };
   }
 
-  async findAll(includeParam?: string | string[], filter?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findAll(isDeleted: boolean = false, filter?: string | string[]) {
+    const whereClause = isDeleted ? undefined : { deletedAt: null };
     const filterWhere = parseFilter(filter);
     const assetTransactions = await this.prisma.assetTransaction.findMany({
-      where: { deletedAt: null, ...filterWhere },
-      include,
+      where: { ...whereClause, ...filterWhere },
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+        office: { select: { id: true, name: true, shortName: true } },
+        department: { select: { id: true, name: true } },
+        asset: {
+          include: {
+            deviceModel: true,
+            deviceType: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
     return {
-      message: 'Asset transactions fetched successfully',
+      message: 'Asset transaction fetched successfully',
       assetTransactions,
     };
   }
 
-  async findOne(id: string, includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findOne(id: string, isDeleted: boolean = false) {
+    const whereClause: Prisma.AssetTransactionWhereInput = { id };
+
+    if (!isDeleted) {
+      whereClause.deletedAt = null;
+    }
+
     const assetTransaction = await this.prisma.assetTransaction.findFirst({
-      where: { id, deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+        office: { select: { id: true, name: true, shortName: true } },
+        department: { select: { id: true, name: true } },
+        asset: {
+          include: {
+            deviceModel: true,
+            deviceType: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
 
     if (!assetTransaction) {
@@ -76,16 +133,11 @@ export class AssetTransactionsService {
   }
 
   async update(
+    req: AuthRequest,
     id: string,
     updateAssetTransactionDto: UpdateAssetTransactionDto,
   ) {
-    const assetTransaction = await this.prisma.assetTransaction.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!assetTransaction) {
-      throw new NotFoundException(`Asset transaction with id ${id} not found`);
-    }
+    await this.findActiveOrFail(id);
 
     const { ...rest } = updateAssetTransactionDto;
 
@@ -102,18 +154,12 @@ export class AssetTransactionsService {
     };
   }
 
-  async remove(id: string) {
-    const assetTransaction = await this.prisma.assetTransaction.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!assetTransaction) {
-      throw new NotFoundException(`Asset transaction with id ${id} not found`);
-    }
+  async remove(req: AuthRequest, id: string) {
+    await this.findActiveOrFail(id);
 
     await this.prisma.assetTransaction.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedById: req.user.sub },
     });
 
     return {
@@ -124,7 +170,7 @@ export class AssetTransactionsService {
   async createRequest(
     req: AuthRequest,
     createAssetTransactionDto: CreateAssetTransactionDto,
-    signature?: Express.Multer.File,
+    signature: Express.Multer.File,
   ) {
     const {
       assetId,
@@ -134,16 +180,11 @@ export class AssetTransactionsService {
       officeId,
       note,
       type,
+      relatedAssets,
     } = createAssetTransactionDto;
 
     try {
-      const asset = await this.prisma.asset.findFirst({
-        where: { id: assetId, deletedAt: null },
-      });
-
-      if (!asset) {
-        throw new NotFoundException(`Asset with id ${assetId} not found`);
-      }
+      const asset = await this.findActiveOrFail(assetId);
 
       const fromUser = await this.prisma.user.findFirst({
         where: { id: fromUserId, deletedAt: null },
@@ -186,15 +227,16 @@ export class AssetTransactionsService {
             userId: toUser.id,
             departmentId: department.id,
             officeId: office.id,
-            direction: TransactionDirection.OUTGOING,
             type: TransactionType.TRANSFER,
+            direction: TransactionDirection.OUTGOING,
             status: TransactionStatus.PENDING,
           },
+          include: { asset: true },
         });
 
         if (transaction) {
           throw new BadRequestException(
-            `You already have a pending transaction for this asset`,
+            `You already have a pending transaction for ${transaction.asset?.internalCode}`,
           );
         }
 
@@ -204,11 +246,11 @@ export class AssetTransactionsService {
               assetId: asset.id,
               departmentId: department.id,
               officeId: office.id,
-              direction: TransactionDirection.INCOMING,
               type: TransactionType.TRANSFER,
+              direction: TransactionDirection.INCOMING,
               status: TransactionStatus.COMPLETED,
             },
-            include: { user: true },
+            include: { user: true, asset: true },
             orderBy: { createdAt: 'desc' },
           });
 
@@ -222,34 +264,65 @@ export class AssetTransactionsService {
               type: TransactionType.TRANSFER,
               status: TransactionStatus.COMPLETED,
             },
-            include: { user: true },
+            include: { user: true, asset: true },
             orderBy: { createdAt: 'desc' },
           });
 
         if (handoverFromTransaction && handoverToTransaction) {
           throw new BadRequestException(
-            `Asset already handed over from ${handoverFromTransaction.user?.name} to ${handoverToTransaction.user?.name}`,
+            `Asset ${handoverFromTransaction.asset?.internalCode} already handed over from ${handoverFromTransaction.user?.name} to ${handoverToTransaction.user?.name}`,
           );
+        }
+
+        if (relatedAssets && relatedAssets.length > 0) {
+          for (let i = 0; i < relatedAssets.length; i++) {
+            const relatedAssetId = relatedAssets[i];
+            const relatedAsset = await this.findActiveOrFail(relatedAssetId);
+
+            const relatedAssetTransaction =
+              await this.prisma.assetTransaction.findFirst({
+                where: {
+                  assetId: relatedAsset.id,
+                  type: TransactionType.TRANSFER,
+                  direction: TransactionDirection.OUTGOING,
+                  status: TransactionStatus.PENDING,
+                },
+                include: { asset: true },
+              });
+
+            if (relatedAssetTransaction) {
+              throw new BadRequestException(
+                `You already have a pending transaction for ${relatedAssetTransaction.asset?.internalCode}`,
+              );
+            }
+          }
         }
 
         const signatureFile = await this.prisma.file.create({
           data: {
-            filePath: signature ? normalizePath(signature.path) : '',
+            filePath: normalizePath(signature.path),
+            createdById: req.user.sub,
+          },
+        });
+
+        const assetTransferBatch = await this.prisma.assetTransferBatch.create({
+          data: {
+            note,
             createdById: req.user.sub,
           },
         });
 
         const assetTransaction = await this.prisma.assetTransaction.create({
           data: {
+            assetTransferBatchId: assetTransferBatch.id,
             assetId: asset.id,
             userId: fromUser.id,
             departmentId: department.id,
             officeId: office.id,
-            note,
             signatureId: signatureFile.id,
             signedAt: new Date(),
-            direction: TransactionDirection.INCOMING,
             type: TransactionType.TRANSFER,
+            direction: TransactionDirection.INCOMING,
             status: TransactionStatus.COMPLETED,
             createdById: req.user.sub,
           },
@@ -258,11 +331,11 @@ export class AssetTransactionsService {
         const confirmedAssetTransaction =
           await this.prisma.assetTransaction.create({
             data: {
+              assetTransferBatchId: assetTransferBatch.id,
               assetId: asset.id,
               userId: toUser.id,
               departmentId: department.id,
               officeId: office.id,
-              note,
               direction: TransactionDirection.OUTGOING,
               type: TransactionType.TRANSFER,
               status: TransactionStatus.PENDING,
@@ -270,101 +343,39 @@ export class AssetTransactionsService {
             },
           });
 
-        return {
-          message: 'Asset transaction created successfully',
-          assetTransaction,
-          confirmedAssetTransaction,
-        };
-      } else if (type === TransactionType.RETURN) {
-        const transaction = await this.prisma.assetTransaction.findFirst({
-          where: {
-            assetId: asset.id,
-            userId: fromUser.id,
-            departmentId: department.id,
-            officeId: office.id,
-            direction: TransactionDirection.OUTGOING,
-            type: TransactionType.RETURN,
-            status: TransactionStatus.PENDING,
-          },
-        });
+        if (relatedAssets && relatedAssets.length > 0) {
+          for (const relatedAssetId of relatedAssets) {
+            await this.prisma.assetTransaction.create({
+              data: {
+                assetTransferBatchId: assetTransferBatch.id,
+                assetId: relatedAssetId,
+                userId: fromUser.id,
+                departmentId: department.id,
+                officeId: office.id,
+                signatureId: signatureFile.id,
+                signedAt: new Date(),
+                type: TransactionType.TRANSFER,
+                direction: TransactionDirection.INCOMING,
+                status: TransactionStatus.COMPLETED,
+                createdById: req.user.sub,
+              },
+            });
 
-        if (transaction) {
-          throw new BadRequestException(
-            `You already have a pending transaction for this asset`,
-          );
+            await this.prisma.assetTransaction.create({
+              data: {
+                assetTransferBatchId: assetTransferBatch.id,
+                assetId: relatedAssetId,
+                userId: toUser.id,
+                departmentId: department.id,
+                officeId: office.id,
+                direction: TransactionDirection.OUTGOING,
+                type: TransactionType.TRANSFER,
+                status: TransactionStatus.PENDING,
+                createdById: req.user.sub,
+              },
+            });
+          }
         }
-
-        const handoverFromTransaction =
-          await this.prisma.assetTransaction.findFirst({
-            where: {
-              assetId: asset.id,
-              departmentId: department.id,
-              officeId: office.id,
-              direction: TransactionDirection.INCOMING,
-              type: TransactionType.RETURN,
-              status: TransactionStatus.COMPLETED,
-            },
-            include: { user: true },
-            orderBy: { createdAt: 'desc' },
-          });
-
-        const handoverToTransaction =
-          await this.prisma.assetTransaction.findFirst({
-            where: {
-              assetId: asset.id,
-              departmentId: department.id,
-              officeId: office.id,
-              direction: TransactionDirection.OUTGOING,
-              type: TransactionType.RETURN,
-              status: TransactionStatus.COMPLETED,
-            },
-            include: { user: true },
-            orderBy: { createdAt: 'desc' },
-          });
-
-        if (handoverFromTransaction && handoverToTransaction) {
-          throw new BadRequestException(
-            `Asset already returned from ${handoverFromTransaction.user?.name} to ${handoverToTransaction.user?.name}`,
-          );
-        }
-
-        const confirmedAssetTransaction =
-          await this.prisma.assetTransaction.create({
-            data: {
-              assetId: asset.id,
-              userId: fromUser.id,
-              departmentId: department.id,
-              officeId: office.id,
-              note,
-              direction: TransactionDirection.INCOMING,
-              type: TransactionType.RETURN,
-              status: TransactionStatus.PENDING,
-              createdById: req.user.sub,
-            },
-          });
-
-        const signatureFile = await this.prisma.file.create({
-          data: {
-            filePath: signature ? normalizePath(signature.path) : '',
-            createdById: req.user.sub,
-          },
-        });
-
-        const assetTransaction = await this.prisma.assetTransaction.create({
-          data: {
-            assetId: asset.id,
-            userId: toUser.id,
-            departmentId: department.id,
-            officeId: office.id,
-            note,
-            signatureId: signatureFile.id,
-            signedAt: new Date(),
-            direction: TransactionDirection.OUTGOING,
-            type: TransactionType.RETURN,
-            status: TransactionStatus.COMPLETED,
-            createdById: req.user.sub,
-          },
-        });
 
         return {
           message: 'Asset transaction created successfully',
@@ -421,9 +432,6 @@ export class AssetTransactionsService {
         const assetTransaction = await this.prisma.assetTransaction.findFirst({
           where: {
             assetId,
-            direction: TransactionDirection.OUTGOING,
-            type: TransactionType.TRANSFER,
-            status: TransactionStatus.PENDING,
             deletedAt: null,
           },
           orderBy: { createdAt: 'desc' },

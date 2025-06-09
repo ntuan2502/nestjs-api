@@ -1,22 +1,10 @@
-import {
-  TransactionDirection,
-  TransactionStatus,
-  TransactionType,
-} from '@prisma/client';
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { TransactionType } from '@prisma/client';
+import { IsArray, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateAssetTransactionDto {
-  @IsString({ message: 'direction must be a string' })
-  @MinLength(1, { message: 'direction must not be empty' })
-  direction: TransactionDirection;
-
   @IsString({ message: 'type must be a string' })
   @MinLength(1, { message: 'type must not be empty' })
   type: TransactionType;
-
-  @IsString({ message: 'status must be a string' })
-  @MinLength(1, { message: 'status must not be empty' })
-  status: TransactionStatus;
 
   @IsOptional()
   @IsString({ message: 'note must be a string' })
@@ -48,4 +36,12 @@ export class CreateAssetTransactionDto {
   @IsOptional()
   @IsString({ message: 'signatureId must be a string' })
   signatureId?: string;
+
+  @IsOptional()
+  @IsArray({ message: 'relatedAssets must be an array' })
+  @IsString({
+    each: true,
+    message: 'relatedAssets must be an array of strings',
+  })
+  relatedAssets?: string[];
 }

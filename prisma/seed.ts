@@ -78,8 +78,7 @@ async function seedOffices(): Promise<Map<string, string>> {
   return map;
 }
 
-async function seedDepartments(): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+async function seedDepartments() {
   try {
     // await prisma.$executeRaw`TRUNCATE TABLE "Department" RESTART IDENTITY CASCADE`;
     // console.log('✅ Cleared existing departments and reset IDs');
@@ -87,7 +86,7 @@ async function seedDepartments(): Promise<Map<string, string>> {
     for (let i = 0; i < departments.length; i++) {
       const department = departments[i];
 
-      const created = await prisma.department.upsert({
+      await prisma.department.upsert({
         where: { name: department.name },
         update: { ...department },
         create: {
@@ -98,22 +97,15 @@ async function seedDepartments(): Promise<Map<string, string>> {
       console.log(
         `Seeded department ${i + 1}/${departments.length}: ${department.name}`,
       );
-      map.set(department.name, created.id);
     }
 
     console.log('✅ Department seeding completed!');
   } catch (error) {
     console.error('❌ Error seeding departments:', error);
   }
-
-  return map;
 }
 
-async function seedUser(
-  officeMap: Map<string, string>,
-  departmentMap: Map<string, string>,
-) {
-  const map = new Map<string, string>();
+async function seedUser() {
   try {
     // await prisma.$executeRaw`TRUNCATE TABLE "User" RESTART IDENTITY CASCADE`;
     // console.log('✅ Cleared existing users and reset IDs');
@@ -122,36 +114,39 @@ async function seedUser(
 
     for (let i = 0; i < users.length; i++) {
       const user = users[i];
-      const officeId = officeMap.get(user.officeShortName);
-      const departmentId = departmentMap.get(user.departmentName);
 
-      const created = await prisma.user.upsert({
+      const department = await prisma.department.findFirst({
+        where: { name: user.departmentName },
+      });
+      const office = await prisma.office.findFirst({
+        where: { shortName: user.officeShortName },
+      });
+
+      await prisma.user.upsert({
         where: { email: user.email },
         update: {
           name: user.name,
           email: user.email,
           phone: user.phone,
-          departmentId,
-          officeId,
+          departmentId: department?.id,
+          officeId: office?.id,
         },
         create: {
           name: user.name,
           email: user.email,
           phone: user.phone,
-          departmentId,
-          officeId,
+          departmentId: department?.id,
+          officeId: office?.id,
           password: passwordHash,
           createdById: ADMIN_ID,
         },
       });
       console.log(`Seed user ${i + 1}/${users.length}: ${user.name}`);
-      map.set(user.name, created.id);
     }
     console.log('✅ User seeding completed!');
   } catch (error) {
     console.error('❌ Error seeding users:', error);
   }
-  return map;
 }
 
 async function seedDeviceTypes(): Promise<Map<string, string>> {
@@ -466,7 +461,7 @@ async function seedAssetTransaction() {
         type = TransactionType.OTHER;
       }
 
-      const batch = await prisma.transactionBatch.create({
+      const batch = await prisma.assetTransferBatch.create({
         data: {
           createdById: ADMIN_ID,
         },
@@ -478,7 +473,7 @@ async function seedAssetTransaction() {
           userId: getUser.id,
           departmentId: getUser.departmentId,
           officeId: getUser.officeId,
-          batchId: batch.id,
+          assetTransferBatchId: batch.id,
           direction: TransactionDirection.INCOMING,
           type,
           status: TransactionStatus.COMPLETED,
@@ -504,9 +499,7 @@ async function main() {
   } else if (args.includes('--department')) {
     await seedDepartments();
   } else if (args.includes('--user')) {
-    const officeMap = await seedOffices();
-    const departmentMap = await seedDepartments();
-    await seedUser(officeMap, departmentMap);
+    await seedUser();
   } else if (args.includes('--device-type')) {
     await seedDeviceTypes();
   } else if (args.includes('--device-model')) {
@@ -519,9 +512,7 @@ async function main() {
     await seedAssetTransaction();
   } else if (args.includes('--all')) {
     await seedAdmin();
-    const officeMap = await seedOffices();
-    const departmentMap = await seedDepartments();
-    await seedUser(officeMap, departmentMap);
+    await seedUser();
     const deviceTypeMap = await seedDeviceTypes();
     const deviceModelMap = await seedDeviceModels();
     await seedAssets(deviceTypeMap, deviceModelMap);

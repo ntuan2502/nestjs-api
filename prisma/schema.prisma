@@ -78,47 +78,47 @@ model User {
   deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
 
   // HasMany
-  createdUser             User[]             @relation("CreatedByUser")
-  updatedUser             User[]             @relation("UpdatedByUser")
-  deletedUser             User[]             @relation("DeletedByUser")
-  session                 Session[]
-  createdSession          Session[]          @relation("CreatedByUser")
-  updatedSession          Session[]          @relation("UpdatedByUser")
-  deletedSession          Session[]          @relation("DeletedByUser")
-  createdOffice           Office[]           @relation("CreatedByUser")
-  updatedOffice           Office[]           @relation("UpdatedByUser")
-  deletedOffice           Office[]           @relation("DeletedByUser")
-  createdDepartment       Department[]       @relation("CreatedByUser")
-  updatedDepartment       Department[]       @relation("UpdatedByUser")
-  deletedDepartment       Department[]       @relation("DeletedByUser")
-  createdDeviceType       DeviceType[]       @relation("CreatedByUser")
-  updatedDeviceType       DeviceType[]       @relation("UpdatedByUser")
-  deletedDeviceType       DeviceType[]       @relation("DeletedByUser")
-  createdDeviceModel      DeviceModel[]      @relation("CreatedByUser")
-  updatedDeviceModel      DeviceModel[]      @relation("UpdatedByUser")
-  deletedDeviceModel      DeviceModel[]      @relation("DeletedByUser")
-  createdBank             Bank[]             @relation("CreatedByUser")
-  updatedBank             Bank[]             @relation("UpdatedByUser")
-  deletedBank             Bank[]             @relation("DeletedByUser")
-  createdBankAccount      BankAccount[]      @relation("CreatedByUser")
-  updatedBankAccount      BankAccount[]      @relation("UpdatedByUser")
-  deletedBankAccount      BankAccount[]      @relation("DeletedByUser")
-  createdSupplier         Supplier[]         @relation("CreatedByUser")
-  updatedSupplier         Supplier[]         @relation("UpdatedByUser")
-  deletedSupplier         Supplier[]         @relation("DeletedByUser")
-  createdAsset            Asset[]            @relation("CreatedByUser")
-  updatedAsset            Asset[]            @relation("UpdatedByUser")
-  deletedAsset            Asset[]            @relation("DeletedByUser")
-  createdTransactionBatch TransactionBatch[] @relation("CreatedByUser")
-  updatedTransactionBatch TransactionBatch[] @relation("UpdatedByUser")
-  deletedTransactionBatch TransactionBatch[] @relation("DeletedByUser")
-  assetTransaction        AssetTransaction[]
-  createdAssetTransaction AssetTransaction[] @relation("CreatedByUser")
-  updatedAssetTransaction AssetTransaction[] @relation("UpdatedByUser")
-  deletedAssetTransaction AssetTransaction[] @relation("DeletedByUser")
-  createdFile             File[]             @relation("CreatedByUser")
-  updatedFile             File[]             @relation("UpdatedByUser")
-  deletedFile             File[]             @relation("DeletedByUser")
+  createdUser               User[]               @relation("CreatedByUser")
+  updatedUser               User[]               @relation("UpdatedByUser")
+  deletedUser               User[]               @relation("DeletedByUser")
+  session                   Session[]
+  createdSession            Session[]            @relation("CreatedByUser")
+  updatedSession            Session[]            @relation("UpdatedByUser")
+  deletedSession            Session[]            @relation("DeletedByUser")
+  createdOffice             Office[]             @relation("CreatedByUser")
+  updatedOffice             Office[]             @relation("UpdatedByUser")
+  deletedOffice             Office[]             @relation("DeletedByUser")
+  createdDepartment         Department[]         @relation("CreatedByUser")
+  updatedDepartment         Department[]         @relation("UpdatedByUser")
+  deletedDepartment         Department[]         @relation("DeletedByUser")
+  createdDeviceType         DeviceType[]         @relation("CreatedByUser")
+  updatedDeviceType         DeviceType[]         @relation("UpdatedByUser")
+  deletedDeviceType         DeviceType[]         @relation("DeletedByUser")
+  createdDeviceModel        DeviceModel[]        @relation("CreatedByUser")
+  updatedDeviceModel        DeviceModel[]        @relation("UpdatedByUser")
+  deletedDeviceModel        DeviceModel[]        @relation("DeletedByUser")
+  createdBank               Bank[]               @relation("CreatedByUser")
+  updatedBank               Bank[]               @relation("UpdatedByUser")
+  deletedBank               Bank[]               @relation("DeletedByUser")
+  createdBankAccount        BankAccount[]        @relation("CreatedByUser")
+  updatedBankAccount        BankAccount[]        @relation("UpdatedByUser")
+  deletedBankAccount        BankAccount[]        @relation("DeletedByUser")
+  createdSupplier           Supplier[]           @relation("CreatedByUser")
+  updatedSupplier           Supplier[]           @relation("UpdatedByUser")
+  deletedSupplier           Supplier[]           @relation("DeletedByUser")
+  createdAsset              Asset[]              @relation("CreatedByUser")
+  updatedAsset              Asset[]              @relation("UpdatedByUser")
+  deletedAsset              Asset[]              @relation("DeletedByUser")
+  createdAssetTransferBatch AssetTransferBatch[] @relation("CreatedByUser")
+  updatedAssetTransferBatch AssetTransferBatch[] @relation("UpdatedByUser")
+  deletedAssetTransferBatch AssetTransferBatch[] @relation("DeletedByUser")
+  assetTransaction          AssetTransaction[]
+  createdAssetTransaction   AssetTransaction[]   @relation("CreatedByUser")
+  updatedAssetTransaction   AssetTransaction[]   @relation("UpdatedByUser")
+  deletedAssetTransaction   AssetTransaction[]   @relation("DeletedByUser")
+  createdFile               File[]               @relation("CreatedByUser")
+  updatedFile               File[]               @relation("UpdatedByUser")
+  deletedFile               File[]               @relation("DeletedByUser")
 }
 
 model Session {
@@ -386,7 +386,7 @@ model Asset {
   assetTransactions AssetTransaction[]
 }
 
-model TransactionBatch {
+model AssetTransferBatch {
   // ID
   id String @id @default(uuid())
 
@@ -428,20 +428,20 @@ model AssetTransaction {
   signedAt  DateTime?
 
   // FK
-  assetId            String
-  userId             String?
-  departmentId       String?
-  officeId           String?
-  transactionBatchId String?
-  signatureId        String?
+  assetId              String
+  userId               String?
+  departmentId         String?
+  officeId             String?
+  assetTransferBatchId String?
+  signatureId          String?
 
   // BelongsTo
-  asset            Asset?            @relation(fields: [assetId], references: [id])
-  user             User?             @relation(fields: [userId], references: [id])
-  department       Department?       @relation(fields: [departmentId], references: [id])
-  office           Office?           @relation(fields: [officeId], references: [id])
-  transactionBatch TransactionBatch? @relation(fields: [transactionBatchId], references: [id])
-  signature        File?             @relation(fields: [signatureId], references: [id])
+  asset              Asset?              @relation(fields: [assetId], references: [id])
+  user               User?               @relation(fields: [userId], references: [id])
+  department         Department?         @relation(fields: [departmentId], references: [id])
+  office             Office?             @relation(fields: [officeId], references: [id])
+  assetTransferBatch AssetTransferBatch? @relation(fields: [assetTransferBatchId], references: [id])
+  signature          File?               @relation(fields: [signatureId], references: [id])
 
   // Timestamps
   createdAt   DateTime @default(now())
@@ -479,6 +479,6 @@ model File {
   deletedBy   User?     @relation("DeletedByUser", fields: [deletedById], references: [id])
 
   // HasMany
-  transactionBatch TransactionBatch[]
-  assetTransaction AssetTransaction[]
+  assetTransferBatch AssetTransferBatch[]
+  assetTransaction   AssetTransaction[]
 }

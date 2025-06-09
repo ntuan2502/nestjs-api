@@ -104,6 +104,8 @@ export class AssetsService {
         createdBy: { select: { id: true, email: true, name: true } },
         updatedBy: { select: { id: true, email: true, name: true } },
         deletedBy: { select: { id: true, email: true, name: true } },
+        deviceType: true,
+        deviceModel: true,
       },
     });
 
@@ -120,14 +122,19 @@ export class AssetsService {
   async update(req: AuthRequest, id: string, updateAssetDto: UpdateAssetDto) {
     await this.findActiveOrFail(id);
 
-    const { internalCode } = updateAssetDto;
+    const { internalCode, warranty, ...rest } = updateAssetDto;
     if (internalCode) {
       await this.validateUnique(internalCode, id);
     }
 
     const updatedAsset = await this.prisma.asset.update({
       where: { id },
-      data: { ...updateAssetDto, updatedById: req.user.sub },
+      data: {
+        ...rest,
+        ...(internalCode ? { internalCode } : {}),
+        warranty: warranty ? Number(warranty) : undefined,
+        updatedById: req.user.sub,
+      },
     });
 
     return {

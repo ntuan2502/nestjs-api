@@ -21,7 +21,7 @@ export class CreateAssetDto {
   @IsOptional()
   @IsObject({ message: 'customProperties must be a valid JSON object' })
   @Type(() => Object)
-  customProperties?: Record<string, any>;
+  customProperties?: Record<string, string>;
 
   @IsOptional()
   @IsString({ message: 'deviceModelId must be a string' })

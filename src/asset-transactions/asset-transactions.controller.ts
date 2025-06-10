@@ -8,7 +8,6 @@ import {
   Delete,
   Query,
   UseInterceptors,
-  UploadedFiles,
   Req,
   UploadedFile,
 } from '@nestjs/common';
@@ -18,10 +17,7 @@ import { UpdateAssetTransactionDto } from './dto/update-asset-transaction.dto';
 import {
   FileFieldsInterceptor,
   FileInterceptor,
-  FilesInterceptor,
 } from '@nestjs/platform-express';
-import { Public } from 'src/common/decorators/public.decorator';
-import { TransactionType } from '@prisma/client';
 import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Controller('asset-transactions')
@@ -88,32 +84,6 @@ export class AssetTransactionsController {
       req,
       createAssetTransactionDto,
       files,
-    );
-  }
-
-  @Public()
-  @Get('confirm-request/:id')
-  getConfirmRequest(
-    @Param('id') id: string,
-    @Query('type') type: TransactionType,
-  ) {
-    return this.assetTransactionsService.getConfirmRequest(id, type);
-  }
-
-  @Public()
-  @Post('confirm-request/:id')
-  @UseInterceptors(FilesInterceptor('toSignature'))
-  confirmRequest(
-    @Param('id') id: string,
-    @Query('type') type: TransactionType,
-    @UploadedFiles() files: Express.Multer.File[],
-  ) {
-    const toSignatureFile = files?.[0];
-
-    return this.assetTransactionsService.confirmRequest(
-      id,
-      type,
-      toSignatureFile,
     );
   }
 }

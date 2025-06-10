@@ -1,5 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsObject, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class CreateAssetDto {
   @IsString({ message: 'internalCode must be a string' })
@@ -15,7 +21,7 @@ export class CreateAssetDto {
   purchaseDate?: Date;
 
   @IsOptional()
-  @IsString({ message: 'warranty must be a string' })
+  @IsNumber({}, { message: 'warranty must be a number' })
   warranty?: number;
 
   @IsOptional()

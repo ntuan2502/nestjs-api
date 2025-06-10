@@ -9,3 +9,4 @@ export * from './ACHL';
 export * from './ACLT';
 export * from './ATLT';
 export * from './AITAM';
+export * from './assetData';

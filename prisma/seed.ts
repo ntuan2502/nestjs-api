@@ -12,12 +12,8 @@ import {
   users,
   deviceTypes,
   deviceModels,
-  ACBHs,
-  ACHLs,
-  ACLTs,
-  ATLTs,
-  AITAMs,
   assets,
+  assetData,
 } from './data';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ADMIN_ID, DEFAULT_PASSWORD } from 'src/common/const';
@@ -50,8 +46,7 @@ async function seedAdmin() {
   }
 }
 
-async function seedOffices(): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+async function seedOffices() {
   try {
     // await prisma.$executeRaw`TRUNCATE TABLE "Office" RESTART IDENTITY CASCADE`;
     // console.log('✅ Cleared existing Office and reset IDs');
@@ -59,7 +54,7 @@ async function seedOffices(): Promise<Map<string, string>> {
     for (let i = 0; i < offices.length; i++) {
       const office = offices[i];
 
-      const created = await prisma.office.upsert({
+      await prisma.office.upsert({
         where: { taxCode: office.taxCode },
         update: { ...office },
         create: {
@@ -68,14 +63,12 @@ async function seedOffices(): Promise<Map<string, string>> {
         },
       });
       console.log(`Seeded office ${i + 1}/${offices.length}: ${office.name}`);
-      map.set(office.shortName, created.id);
     }
 
     console.log('Office seeding completed successfully!');
   } catch (error) {
     console.error('Error seeding offices:', error);
   }
-  return map;
 }
 
 async function seedDepartments() {
@@ -122,21 +115,21 @@ async function seedUser() {
         where: { shortName: user.officeShortName },
       });
 
+      const data = {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        departmentId: department?.id,
+        officeId: office?.id,
+      };
+
       await prisma.user.upsert({
         where: { email: user.email },
         update: {
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          departmentId: department?.id,
-          officeId: office?.id,
+          ...data,
         },
         create: {
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          departmentId: department?.id,
-          officeId: office?.id,
+          ...data,
           password: passwordHash,
           createdById: ADMIN_ID,
         },
@@ -149,8 +142,7 @@ async function seedUser() {
   }
 }
 
-async function seedDeviceTypes(): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+async function seedDeviceTypes() {
   try {
     // await prisma.$executeRaw`TRUNCATE TABLE "DeviceType" RESTART IDENTITY CASCADE`;
     // console.log('✅ Cleared existing device types and reset IDs');
@@ -158,7 +150,7 @@ async function seedDeviceTypes(): Promise<Map<string, string>> {
     for (let i = 0; i < deviceTypes.length; i++) {
       const deviceType = deviceTypes[i];
 
-      const created = await prisma.deviceType.upsert({
+      await prisma.deviceType.upsert({
         where: { name: deviceType.name },
         update: { ...deviceType },
         create: {
@@ -169,18 +161,15 @@ async function seedDeviceTypes(): Promise<Map<string, string>> {
       console.log(
         `Seeded device type ${i + 1}/${deviceTypes.length}: ${deviceType.name}`,
       );
-      map.set(deviceType.name, created.id);
     }
 
     console.log('✅ Device type seeding completed!');
   } catch (error) {
     console.error('❌ Error seeding device types:', error);
   }
-  return map;
 }
 
-async function seedDeviceModels(): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+async function seedDeviceModels() {
   try {
     // await prisma.$executeRaw`TRUNCATE TABLE "DeviceModel" RESTART IDENTITY CASCADE`;
     // console.log('✅ Cleared existing device models and reset IDs');
@@ -188,7 +177,7 @@ async function seedDeviceModels(): Promise<Map<string, string>> {
     for (let i = 0; i < deviceModels.length; i++) {
       const deviceModel = deviceModels[i];
 
-      const created = await prisma.deviceModel.upsert({
+      await prisma.deviceModel.upsert({
         where: { name: deviceModel.name },
         update: { ...deviceModel },
         create: {
@@ -199,54 +188,48 @@ async function seedDeviceModels(): Promise<Map<string, string>> {
       console.log(
         `Seeded device model ${i + 1}/${deviceModels.length}: ${deviceModel.name}`,
       );
-      map.set(deviceModel.name, created.id);
     }
 
     console.log('✅ Device model seeding completed!');
   } catch (error) {
     console.error('❌ Error seeding device models:', error);
   }
-  return map;
 }
 
-async function seedAssets(
-  deviceTypeMap: Map<string, string>,
-  deviceModelMap: Map<string, string>,
-): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+async function seedAssets() {
   // await prisma.$executeRaw`TRUNCATE TABLE "Asset" RESTART IDENTITY CASCADE`;
   // console.log('✅ Cleared existing assets and reset IDs');
-  const dataArrays = ACBHs;
-  const dataArrays2 = ACHLs;
-  const dataArrays3 = ACLTs;
-  const dataArrays4 = ATLTs;
-  const dataArrays5 = AITAMs;
+  const dataArrays = assetData;
 
   try {
     for (let i = 0; i < dataArrays.length; i++) {
       const dataItem = dataArrays[i];
 
-      const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
-      const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
+      const deviceModel = await prisma.deviceModel.findFirst({
+        where: { name: dataItem.deviceModel },
+      });
+      const deviceType = await prisma.deviceType.findFirst({
+        where: { name: dataItem.deviceType },
+      });
 
       const data = {
-        internalCode: dataItem.code,
-        serialNumber: dataItem.serial_number,
-        purchaseDate: new Date(dataItem.purchase_date),
-        warranty: dataItem.warranty_duration,
+        internalCode: dataItem.internalCode,
+        serialNumber: dataItem.serialNumber,
+        purchaseDate: new Date(dataItem.purchaseDate),
+        warranty: parseInt(dataItem.warranty),
         customProperties: {
-          macAddress: dataItem.mac_address,
+          macAddress: dataItem.macAddress,
           cpu: dataItem.cpu,
           ram: dataItem.ram,
-          hardDrive: dataItem.hard_drive,
-          osType: dataItem.os_type,
+          hardDrive: dataItem.hardDrive,
+          osType: dataItem.osType,
         },
-        deviceTypeId,
-        deviceModelId,
+        deviceTypeId: deviceType?.id,
+        deviceModelId: deviceModel?.id,
       };
 
-      const created = await prisma.asset.upsert({
-        where: { internalCode: dataItem.code },
+      await prisma.asset.upsert({
+        where: { internalCode: dataItem.internalCode },
         update: {
           ...data,
         },
@@ -256,206 +239,50 @@ async function seedAssets(
         },
       });
       console.log(
-        `Seeded asset ${i + 1}/${dataArrays.length}: ${dataItem.code}`,
+        `Seeded asset ${i + 1}/${dataArrays.length}: ${dataItem.internalCode}`,
       );
-      map.set(dataItem.code, created.id);
-    }
-
-    for (let i = 0; i < dataArrays2.length; i++) {
-      const dataItem = dataArrays2[i];
-
-      const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
-      const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
-
-      const data = {
-        internalCode: dataItem.code,
-        serialNumber: dataItem.serial_number,
-        purchaseDate: new Date(dataItem.purchase_date),
-        warranty: dataItem.warranty_duration,
-        customProperties: {
-          macAddress: dataItem.mac_address,
-          cpu: dataItem.cpu,
-          ram: dataItem.ram,
-          hardDrive: dataItem.hard_drive,
-          osType: dataItem.os_type,
-        },
-        deviceTypeId,
-        deviceModelId,
-      };
-
-      const created = await prisma.asset.upsert({
-        where: { internalCode: dataItem.code },
-        update: {
-          ...data,
-        },
-        create: {
-          ...data,
-          createdById: ADMIN_ID,
-        },
-      });
-      console.log(
-        `Seeded asset ${i + 1}/${dataArrays2.length}: ${dataItem.code}`,
-      );
-      map.set(dataItem.code, created.id);
-    }
-
-    for (let i = 0; i < dataArrays3.length; i++) {
-      const dataItem = dataArrays3[i];
-
-      const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
-      const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
-
-      const data = {
-        internalCode: dataItem.code,
-        serialNumber: dataItem.serial_number,
-        purchaseDate: new Date(dataItem.purchase_date),
-        warranty: dataItem.warranty_duration,
-        customProperties: {
-          macAddress: dataItem.mac_address,
-          cpu: dataItem.cpu,
-          ram: dataItem.ram,
-          hardDrive: dataItem.hard_drive,
-          osType: dataItem.os_type,
-        },
-        deviceTypeId,
-        deviceModelId,
-      };
-
-      const created = await prisma.asset.upsert({
-        where: { internalCode: dataItem.code },
-        update: {
-          ...data,
-        },
-        create: {
-          ...data,
-          createdById: ADMIN_ID,
-        },
-      });
-      console.log(
-        `Seeded asset ${i + 1}/${dataArrays3.length}: ${dataItem.code}`,
-      );
-      map.set(dataItem.code, created.id);
-    }
-
-    for (let i = 0; i < dataArrays4.length; i++) {
-      const dataItem = dataArrays4[i];
-
-      const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
-      const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
-
-      const data = {
-        internalCode: dataItem.code,
-        serialNumber: dataItem.serial_number,
-        purchaseDate: new Date(dataItem.purchase_date),
-        warranty: dataItem.warranty_duration,
-        customProperties: {
-          macAddress: dataItem.mac_address,
-          cpu: dataItem.cpu,
-          ram: dataItem.ram,
-          hardDrive: dataItem.hard_drive,
-          osType: dataItem.os_type,
-        },
-        deviceTypeId,
-        deviceModelId,
-      };
-
-      const created = await prisma.asset.upsert({
-        where: { internalCode: dataItem.code },
-        update: {
-          ...data,
-        },
-        create: {
-          ...data,
-          createdById: ADMIN_ID,
-        },
-      });
-      console.log(
-        `Seeded asset ${i + 1}/${dataArrays4.length}: ${dataItem.code}`,
-      );
-      map.set(dataItem.code, created.id);
-    }
-
-    for (let i = 0; i < dataArrays5.length; i++) {
-      const dataItem = dataArrays5[i];
-
-      const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
-      const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
-
-      const data = {
-        internalCode: dataItem.code,
-        serialNumber: dataItem.serial_number,
-        purchaseDate: new Date(dataItem.purchase_date),
-        warranty: dataItem.warranty_duration,
-        customProperties: {
-          macAddress: dataItem.mac_address,
-          cpu: dataItem.cpu,
-          ram: dataItem.ram,
-          hardDrive: dataItem.hard_drive,
-          osType: dataItem.os_type,
-        },
-        deviceTypeId,
-        deviceModelId,
-      };
-
-      const created = await prisma.asset.upsert({
-        where: { internalCode: dataItem.code },
-        update: {
-          ...data,
-        },
-        create: {
-          ...data,
-          createdById: ADMIN_ID,
-        },
-      });
-      console.log(
-        `Seeded asset ${i + 1}/${dataArrays5.length}: ${dataItem.code}`,
-      );
-      map.set(dataItem.code, created.id);
     }
 
     console.log('✅ Device asset seeding completed!');
   } catch (error) {
     console.error('❌ Error seeding device assets:', error);
   }
-  return map;
 }
 
 async function seedAssetTransaction() {
   // await prisma.$executeRaw`TRUNCATE TABLE "AssetTransaction" RESTART IDENTITY CASCADE`;
   // console.log('✅ Cleared existing AssetTransaction and reset IDs');
   try {
-    for (let i = 0; i < assets.length; i++) {
-      const asset = assets[i];
+    for (let i = 0; i < assetData.length; i++) {
+      const asset = assetData[i];
 
       const getUser = await prisma.user.findFirst({
-        where: { email: asset.employee.email, deletedAt: null },
+        where: { name: asset.user, deletedAt: null },
         include: { office: true, department: true },
       });
 
       if (!getUser) {
-        throw new NotFoundException(
-          `User with email ${asset.employee.email} not found`,
-        );
+        throw new NotFoundException(`User ${asset.user} not found`);
       }
 
       const getAsset = await prisma.asset.findFirst({
-        where: { internalCode: asset.code, deletedAt: null },
+        where: { internalCode: asset.internalCode, deletedAt: null },
       });
 
       if (!getAsset) {
-        throw new NotFoundException(`Asset with code ${asset.code} not found`);
+        throw new NotFoundException(
+          `Asset with internalCode ${asset.internalCode} not found`,
+        );
       }
 
       let type: TransactionType;
-      if (asset.device_status == 'in using') {
+      if (asset.type == 'TRANSFER') {
         type = TransactionType.TRANSFER;
-      } else if (asset.device_status == 'available') {
+      } else if (asset.type == 'RETURN') {
         type = TransactionType.RETURN;
-      } else if (asset.device_status == 'waiting for disposal') {
+      } else if (asset.type == 'DISPOSAL') {
         type = TransactionType.DISPOSAL;
-      } else if (asset.device_status == 'liquidation') {
-        type = TransactionType.OTHER;
-      } else if (asset.device_status == 'donation') {
+      } else if (asset.type == 'DONATION') {
         type = TransactionType.DONATION;
       } else {
         type = TransactionType.OTHER;
@@ -489,6 +316,286 @@ async function seedAssetTransaction() {
   }
 }
 
+// async function seedAssetsOld(
+//   deviceTypeMap: Map<string, string>,
+//   deviceModelMap: Map<string, string>,
+// ): Promise<Map<string, string>> {
+//   const map = new Map<string, string>();
+//   // await prisma.$executeRaw`TRUNCATE TABLE "Asset" RESTART IDENTITY CASCADE`;
+//   // console.log('✅ Cleared existing assets and reset IDs');
+//   const dataArrays = ACBHs;
+//   const dataArrays2 = ACHLs;
+//   const dataArrays3 = ACLTs;
+//   const dataArrays4 = ATLTs;
+//   const dataArrays5 = AITAMs;
+
+//   try {
+//     for (let i = 0; i < dataArrays.length; i++) {
+//       const dataItem = dataArrays[i];
+
+//       const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
+//       const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
+
+//       const data = {
+//         internalCode: dataItem.code,
+//         serialNumber: dataItem.serial_number,
+//         purchaseDate: new Date(dataItem.purchase_date),
+//         warranty: dataItem.warranty_duration,
+//         customProperties: {
+//           macAddress: dataItem.mac_address,
+//           cpu: dataItem.cpu,
+//           ram: dataItem.ram,
+//           hardDrive: dataItem.hard_drive,
+//           osType: dataItem.os_type,
+//         },
+//         deviceTypeId,
+//         deviceModelId,
+//       };
+
+//       const created = await prisma.asset.upsert({
+//         where: { internalCode: dataItem.code },
+//         update: {
+//           ...data,
+//         },
+//         create: {
+//           ...data,
+//           createdById: ADMIN_ID,
+//         },
+//       });
+//       console.log(
+//         `Seeded asset ${i + 1}/${dataArrays.length}: ${dataItem.code}`,
+//       );
+//       map.set(dataItem.code, created.id);
+//     }
+
+//     for (let i = 0; i < dataArrays2.length; i++) {
+//       const dataItem = dataArrays2[i];
+
+//       const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
+//       const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
+
+//       const data = {
+//         internalCode: dataItem.code,
+//         serialNumber: dataItem.serial_number,
+//         purchaseDate: new Date(dataItem.purchase_date),
+//         warranty: dataItem.warranty_duration,
+//         customProperties: {
+//           macAddress: dataItem.mac_address,
+//           cpu: dataItem.cpu,
+//           ram: dataItem.ram,
+//           hardDrive: dataItem.hard_drive,
+//           osType: dataItem.os_type,
+//         },
+//         deviceTypeId,
+//         deviceModelId,
+//       };
+
+//       const created = await prisma.asset.upsert({
+//         where: { internalCode: dataItem.code },
+//         update: {
+//           ...data,
+//         },
+//         create: {
+//           ...data,
+//           createdById: ADMIN_ID,
+//         },
+//       });
+//       console.log(
+//         `Seeded asset ${i + 1}/${dataArrays2.length}: ${dataItem.code}`,
+//       );
+//       map.set(dataItem.code, created.id);
+//     }
+
+//     for (let i = 0; i < dataArrays3.length; i++) {
+//       const dataItem = dataArrays3[i];
+
+//       const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
+//       const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
+
+//       const data = {
+//         internalCode: dataItem.code,
+//         serialNumber: dataItem.serial_number,
+//         purchaseDate: new Date(dataItem.purchase_date),
+//         warranty: dataItem.warranty_duration,
+//         customProperties: {
+//           macAddress: dataItem.mac_address,
+//           cpu: dataItem.cpu,
+//           ram: dataItem.ram,
+//           hardDrive: dataItem.hard_drive,
+//           osType: dataItem.os_type,
+//         },
+//         deviceTypeId,
+//         deviceModelId,
+//       };
+
+//       const created = await prisma.asset.upsert({
+//         where: { internalCode: dataItem.code },
+//         update: {
+//           ...data,
+//         },
+//         create: {
+//           ...data,
+//           createdById: ADMIN_ID,
+//         },
+//       });
+//       console.log(
+//         `Seeded asset ${i + 1}/${dataArrays3.length}: ${dataItem.code}`,
+//       );
+//       map.set(dataItem.code, created.id);
+//     }
+
+//     for (let i = 0; i < dataArrays4.length; i++) {
+//       const dataItem = dataArrays4[i];
+
+//       const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
+//       const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
+
+//       const data = {
+//         internalCode: dataItem.code,
+//         serialNumber: dataItem.serial_number,
+//         purchaseDate: new Date(dataItem.purchase_date),
+//         warranty: dataItem.warranty_duration,
+//         customProperties: {
+//           macAddress: dataItem.mac_address,
+//           cpu: dataItem.cpu,
+//           ram: dataItem.ram,
+//           hardDrive: dataItem.hard_drive,
+//           osType: dataItem.os_type,
+//         },
+//         deviceTypeId,
+//         deviceModelId,
+//       };
+
+//       const created = await prisma.asset.upsert({
+//         where: { internalCode: dataItem.code },
+//         update: {
+//           ...data,
+//         },
+//         create: {
+//           ...data,
+//           createdById: ADMIN_ID,
+//         },
+//       });
+//       console.log(
+//         `Seeded asset ${i + 1}/${dataArrays4.length}: ${dataItem.code}`,
+//       );
+//       map.set(dataItem.code, created.id);
+//     }
+
+//     for (let i = 0; i < dataArrays5.length; i++) {
+//       const dataItem = dataArrays5[i];
+
+//       const deviceTypeId = deviceTypeMap.get(dataItem.device_type.name);
+//       const deviceModelId = deviceModelMap.get(dataItem.device_model.name);
+
+//       const data = {
+//         internalCode: dataItem.code,
+//         serialNumber: dataItem.serial_number,
+//         purchaseDate: new Date(dataItem.purchase_date),
+//         warranty: dataItem.warranty_duration,
+//         customProperties: {
+//           macAddress: dataItem.mac_address,
+//           cpu: dataItem.cpu,
+//           ram: dataItem.ram,
+//           hardDrive: dataItem.hard_drive,
+//           osType: dataItem.os_type,
+//         },
+//         deviceTypeId,
+//         deviceModelId,
+//       };
+
+//       const created = await prisma.asset.upsert({
+//         where: { internalCode: dataItem.code },
+//         update: {
+//           ...data,
+//         },
+//         create: {
+//           ...data,
+//           createdById: ADMIN_ID,
+//         },
+//       });
+//       console.log(
+//         `Seeded asset ${i + 1}/${dataArrays5.length}: ${dataItem.code}`,
+//       );
+//       map.set(dataItem.code, created.id);
+//     }
+
+//     console.log('✅ Device asset seeding completed!');
+//   } catch (error) {
+//     console.error('❌ Error seeding device assets:', error);
+//   }
+//   return map;
+// }
+
+// async function seedAssetTransactionOld() {
+//   // await prisma.$executeRaw`TRUNCATE TABLE "AssetTransaction" RESTART IDENTITY CASCADE`;
+//   // console.log('✅ Cleared existing AssetTransaction and reset IDs');
+//   try {
+//     for (let i = 0; i < assets.length; i++) {
+//       const asset = assets[i];
+
+//       const getUser = await prisma.user.findFirst({
+//         where: { email: asset.employee.email, deletedAt: null },
+//         include: { office: true, department: true },
+//       });
+
+//       if (!getUser) {
+//         throw new NotFoundException(
+//           `User with email ${asset.employee.email} not found`,
+//         );
+//       }
+
+//       const getAsset = await prisma.asset.findFirst({
+//         where: { internalCode: asset.code, deletedAt: null },
+//       });
+
+//       if (!getAsset) {
+//         throw new NotFoundException(`Asset with code ${asset.code} not found`);
+//       }
+
+//       let type: TransactionType;
+//       if (asset.device_status == 'in using') {
+//         type = TransactionType.TRANSFER;
+//       } else if (asset.device_status == 'available') {
+//         type = TransactionType.RETURN;
+//       } else if (asset.device_status == 'waiting for disposal') {
+//         type = TransactionType.DISPOSAL;
+//       } else if (asset.device_status == 'liquidation') {
+//         type = TransactionType.OTHER;
+//       } else if (asset.device_status == 'donation') {
+//         type = TransactionType.DONATION;
+//       } else {
+//         type = TransactionType.OTHER;
+//       }
+
+//       const batch = await prisma.assetTransferBatch.create({
+//         data: {
+//           createdById: ADMIN_ID,
+//         },
+//       });
+
+//       await prisma.assetTransaction.create({
+//         data: {
+//           assetId: getAsset.id,
+//           userId: getUser.id,
+//           departmentId: getUser.departmentId,
+//           officeId: getUser.officeId,
+//           assetTransferBatchId: batch.id,
+//           direction: TransactionDirection.INCOMING,
+//           type,
+//           status: TransactionStatus.COMPLETED,
+//           createdById: ADMIN_ID,
+//         },
+//       });
+//       console.log(`Seeded assetTransaction ${i + 1}/${assets.length}`);
+//     }
+
+//     console.log('✅ assetTransaction seeding completed!');
+//   } catch (error) {
+//     console.error('❌ Error seeding assetTransaction:', error);
+//   }
+// }
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -505,17 +612,17 @@ async function main() {
   } else if (args.includes('--device-model')) {
     await seedDeviceModels();
   } else if (args.includes('--asset')) {
-    const deviceTypeMap = await seedDeviceTypes();
-    const deviceModelMap = await seedDeviceModels();
-    await seedAssets(deviceTypeMap, deviceModelMap);
+    await seedAssets();
   } else if (args.includes('--assetTransaction')) {
     await seedAssetTransaction();
   } else if (args.includes('--all')) {
     await seedAdmin();
+    await seedOffices();
+    await seedDepartments();
+    await seedDeviceTypes();
+    await seedDeviceModels();
     await seedUser();
-    const deviceTypeMap = await seedDeviceTypes();
-    const deviceModelMap = await seedDeviceModels();
-    await seedAssets(deviceTypeMap, deviceModelMap);
+    await seedAssets();
     await seedAssetTransaction();
   } else {
     console.log('Please specify a seed type. Available options:');

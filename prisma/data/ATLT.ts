@@ -243,7 +243,7 @@ export const ATLTs = [
     device_model: {
       id: 357,
       documentId: 'zuv9r6p5x01nlal45w175z8z',
-      name: 'HP Pavilion 14-dv0000 ',
+      name: 'HP Pavilion 14-dv0000',
       createdAt: '2025-03-05T01:47:52.133Z',
       updatedAt: '2025-03-05T01:47:52.133Z',
       publishedAt: '2025-03-06T08:22:12.667Z',

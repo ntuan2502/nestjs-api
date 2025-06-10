@@ -192,7 +192,7 @@ CREATE TABLE "Asset" (
 );
 
 -- CreateTable
-CREATE TABLE "TransactionBatch" (
+CREATE TABLE "AssetTransferBatch" (
     "id" TEXT NOT NULL,
     "note" TEXT,
     "handoverId" TEXT,
@@ -203,7 +203,7 @@ CREATE TABLE "TransactionBatch" (
     "deletedAt" TIMESTAMP(3),
     "deletedById" TEXT,
 
-    CONSTRAINT "TransactionBatch_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "AssetTransferBatch_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -218,7 +218,7 @@ CREATE TABLE "AssetTransaction" (
     "userId" TEXT,
     "departmentId" TEXT,
     "officeId" TEXT,
-    "batchId" TEXT,
+    "assetTransferBatchId" TEXT,
     "signatureId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "createdById" TEXT NOT NULL,
@@ -390,16 +390,16 @@ ALTER TABLE "Asset" ADD CONSTRAINT "Asset_updatedById_fkey" FOREIGN KEY ("update
 ALTER TABLE "Asset" ADD CONSTRAINT "Asset_deletedById_fkey" FOREIGN KEY ("deletedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TransactionBatch" ADD CONSTRAINT "TransactionBatch_handoverId_fkey" FOREIGN KEY ("handoverId") REFERENCES "File"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "AssetTransferBatch" ADD CONSTRAINT "AssetTransferBatch_handoverId_fkey" FOREIGN KEY ("handoverId") REFERENCES "File"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TransactionBatch" ADD CONSTRAINT "TransactionBatch_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "AssetTransferBatch" ADD CONSTRAINT "AssetTransferBatch_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TransactionBatch" ADD CONSTRAINT "TransactionBatch_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "AssetTransferBatch" ADD CONSTRAINT "AssetTransferBatch_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TransactionBatch" ADD CONSTRAINT "TransactionBatch_deletedById_fkey" FOREIGN KEY ("deletedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "AssetTransferBatch" ADD CONSTRAINT "AssetTransferBatch_deletedById_fkey" FOREIGN KEY ("deletedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_assetId_fkey" FOREIGN KEY ("assetId") REFERENCES "Asset"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -414,7 +414,7 @@ ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_departmentId_fke
 ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_officeId_fkey" FOREIGN KEY ("officeId") REFERENCES "Office"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_batchId_fkey" FOREIGN KEY ("batchId") REFERENCES "TransactionBatch"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_assetTransferBatchId_fkey" FOREIGN KEY ("assetTransferBatchId") REFERENCES "AssetTransferBatch"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AssetTransaction" ADD CONSTRAINT "AssetTransaction_signatureId_fkey" FOREIGN KEY ("signatureId") REFERENCES "File"("id") ON DELETE SET NULL ON UPDATE CASCADE;

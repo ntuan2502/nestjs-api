@@ -57,9 +57,13 @@ export class AssetTransferBatchService {
         updatedBy: { select: { id: true, email: true, name: true } },
         deletedBy: { select: { id: true, email: true, name: true } },
         assetTransactions: {
-          where: { status: 'PENDING' },
           include: {
-            asset: true,
+            asset: {
+              include: {
+                deviceModel: true,
+                deviceType: true,
+              },
+            },
           },
         },
         handover: true,
@@ -139,6 +143,14 @@ export class AssetTransferBatchService {
           where: {
             status: 'PENDING',
             type,
+          },
+          include: {
+            asset: {
+              include: {
+                deviceModel: true,
+                deviceType: true,
+              },
+            },
           },
         },
       },

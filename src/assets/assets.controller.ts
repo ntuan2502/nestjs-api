@@ -7,43 +7,48 @@ import {
   Param,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import { AssetsService } from './assets.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Controller('assets')
 export class AssetsController {
   constructor(private readonly assetsService: AssetsService) {}
 
   @Post()
-  create(@Body() createAssetDto: CreateAssetDto) {
-    return this.assetsService.create(createAssetDto);
+  create(@Req() req: AuthRequest, @Body() createAssetDto: CreateAssetDto) {
+    return this.assetsService.create(req, createAssetDto);
   }
 
   @Get()
   findAll(
-    @Query('include') includeParam?: string | string[],
+    @Query('isDeleted') isDeleted?: string,
     @Query('filter') filter?: string | string[],
   ) {
-    return this.assetsService.findAll(includeParam, filter);
+    const shouldIncludeDeleted = isDeleted === 'true';
+    return this.assetsService.findAll(shouldIncludeDeleted, filter);
   }
 
   @Get(':id')
-  findOne(
-    @Param('id') id: string,
-    @Query('include') includeParam?: string | string[],
-  ) {
-    return this.assetsService.findOne(id, includeParam);
+  findOne(@Param('id') id: string, @Query('isDeleted') isDeleted: string) {
+    const shouldIncludeDeleted = isDeleted === 'true';
+    return this.assetsService.findOne(id, shouldIncludeDeleted);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAssetDto: UpdateAssetDto) {
-    return this.assetsService.update(id, updateAssetDto);
+  update(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Body() updateAssetDto: UpdateAssetDto,
+  ) {
+    return this.assetsService.update(req, id, updateAssetDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.assetsService.remove(id);
+  remove(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.assetsService.remove(req, id);
   }
 }

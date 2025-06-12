@@ -6,8 +6,8 @@ export class CreateOfficeDto {
   name?: string;
 
   @IsOptional()
-  @IsString({ message: 'internationalName must be a string' })
-  internationalName?: string;
+  @IsString({ message: 'nameEn must be a string' })
+  nameEn?: string;
 
   @IsOptional()
   @IsString({ message: 'shortName must be a string' })

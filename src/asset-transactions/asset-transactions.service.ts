@@ -6,27 +6,47 @@ import {
 import { CreateAssetTransactionDto } from './dto/create-asset-transaction.dto';
 import { UpdateAssetTransactionDto } from './dto/update-asset-transaction.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { parseInclude } from 'src/common/utils/parseInclude';
 import { parseFilter } from 'src/common/utils/parseFilter';
 import { normalizePath } from 'src/common/utils/function';
 import * as fs from 'fs';
-import * as path from 'path';
-import * as puppeteer from 'puppeteer';
 import {
-  TransactionRole,
+  Prisma,
+  TransactionDirection,
   TransactionStatus,
   TransactionType,
 } from '@prisma/client';
-import * as dayjs from 'dayjs';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Injectable()
 export class AssetTransactionsService {
   constructor(private prisma: PrismaService) {}
-  async create(createAssetTransactionDto: CreateAssetTransactionDto) {
+
+  private async findActiveOrFail(id: string) {
+    const data = await this.prisma.asset.findFirst({
+      where: { id, deletedAt: null },
+    });
+
+    if (!data) {
+      throw new NotFoundException(`assetTransaction with id ${id} not found`);
+    }
+
+    return data;
+  }
+
+  async create(
+    req: AuthRequest,
+    createAssetTransactionDto: CreateAssetTransactionDto,
+  ) {
     const data = { ...createAssetTransactionDto };
 
     const assetTransaction = await this.prisma.assetTransaction.create({
-      data,
+      data: {
+        ...data,
+        direction: TransactionDirection.INCOMING,
+        status: TransactionStatus.COMPLETED,
+
+        createdById: req.user.sub,
+      },
     });
 
     return {
@@ -35,26 +55,67 @@ export class AssetTransactionsService {
     };
   }
 
-  async findAll(includeParam?: string | string[], filter?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findAll(isDeleted: boolean = false, filter?: string | string[]) {
+    const whereClause = isDeleted ? undefined : { deletedAt: null };
     const filterWhere = parseFilter(filter);
     const assetTransactions = await this.prisma.assetTransaction.findMany({
-      where: { deletedAt: null, ...filterWhere },
-      include,
+      where: { ...whereClause, ...filterWhere },
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+        office: { select: { id: true, name: true, shortName: true } },
+        department: { select: { id: true, name: true } },
+        asset: {
+          include: {
+            deviceModel: true,
+            deviceType: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
     return {
-      message: 'Asset transactions fetched successfully',
+      message: 'Asset transaction fetched successfully',
       assetTransactions,
     };
   }
 
-  async findOne(id: string, includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findOne(id: string, isDeleted: boolean = false) {
+    const whereClause: Prisma.AssetTransactionWhereInput = { id };
+
+    if (!isDeleted) {
+      whereClause.deletedAt = null;
+    }
+
     const assetTransaction = await this.prisma.assetTransaction.findFirst({
-      where: { id, deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+        office: { select: { id: true, name: true, shortName: true } },
+        department: { select: { id: true, name: true } },
+        asset: {
+          include: {
+            deviceModel: true,
+            deviceType: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
 
     if (!assetTransaction) {
@@ -68,16 +129,11 @@ export class AssetTransactionsService {
   }
 
   async update(
+    req: AuthRequest,
     id: string,
     updateAssetTransactionDto: UpdateAssetTransactionDto,
   ) {
-    const assetTransaction = await this.prisma.assetTransaction.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!assetTransaction) {
-      throw new NotFoundException(`Asset transaction with id ${id} not found`);
-    }
+    await this.findActiveOrFail(id);
 
     const { ...rest } = updateAssetTransactionDto;
 
@@ -94,18 +150,12 @@ export class AssetTransactionsService {
     };
   }
 
-  async remove(id: string) {
-    const assetTransaction = await this.prisma.assetTransaction.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!assetTransaction) {
-      throw new NotFoundException(`Asset transaction with id ${id} not found`);
-    }
+  async remove(req: AuthRequest, id: string) {
+    await this.findActiveOrFail(id);
 
     await this.prisma.assetTransaction.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedById: req.user.sub },
     });
 
     return {
@@ -114,8 +164,9 @@ export class AssetTransactionsService {
   }
 
   async createRequest(
+    req: AuthRequest,
     createAssetTransactionDto: CreateAssetTransactionDto,
-    signature?: Express.Multer.File,
+    signature: Express.Multer.File,
   ) {
     const {
       assetId,
@@ -125,16 +176,11 @@ export class AssetTransactionsService {
       officeId,
       note,
       type,
+      relatedAssets,
     } = createAssetTransactionDto;
 
     try {
-      const asset = await this.prisma.asset.findFirst({
-        where: { id: assetId, deletedAt: null },
-      });
-
-      if (!asset) {
-        throw new NotFoundException(`Asset with id ${assetId} not found`);
-      }
+      const asset = await this.findActiveOrFail(assetId);
 
       const fromUser = await this.prisma.user.findFirst({
         where: { id: fromUserId, deletedAt: null },
@@ -177,15 +223,16 @@ export class AssetTransactionsService {
             userId: toUser.id,
             departmentId: department.id,
             officeId: office.id,
-            role: TransactionRole.TO,
             type: TransactionType.TRANSFER,
+            direction: TransactionDirection.OUTGOING,
             status: TransactionStatus.PENDING,
           },
+          include: { asset: true },
         });
 
         if (transaction) {
           throw new BadRequestException(
-            `You already have a pending transaction for this asset`,
+            `You already have a pending transaction for ${transaction.asset?.internalCode}`,
           );
         }
 
@@ -195,11 +242,11 @@ export class AssetTransactionsService {
               assetId: asset.id,
               departmentId: department.id,
               officeId: office.id,
-              role: TransactionRole.FROM,
               type: TransactionType.TRANSFER,
+              direction: TransactionDirection.INCOMING,
               status: TransactionStatus.COMPLETED,
             },
-            include: { user: true },
+            include: { user: true, asset: true },
             orderBy: { createdAt: 'desc' },
           });
 
@@ -209,135 +256,122 @@ export class AssetTransactionsService {
               assetId: asset.id,
               departmentId: department.id,
               officeId: office.id,
-              role: TransactionRole.TO,
               type: TransactionType.TRANSFER,
+              direction: TransactionDirection.OUTGOING,
               status: TransactionStatus.COMPLETED,
             },
-            include: { user: true },
+            include: { user: true, asset: true },
             orderBy: { createdAt: 'desc' },
           });
 
         if (handoverFromTransaction && handoverToTransaction) {
           throw new BadRequestException(
-            `Asset already handed over from ${handoverFromTransaction.user?.name} to ${handoverToTransaction.user?.name}`,
+            `Asset ${handoverFromTransaction.asset?.internalCode} already handed over from ${handoverFromTransaction.user?.name} to ${handoverToTransaction.user?.name}`,
           );
         }
 
+        if (relatedAssets && relatedAssets.length > 0) {
+          for (let i = 0; i < relatedAssets.length; i++) {
+            const relatedAssetId = relatedAssets[i];
+            const relatedAsset = await this.findActiveOrFail(relatedAssetId);
+
+            const relatedAssetTransaction =
+              await this.prisma.assetTransaction.findFirst({
+                where: {
+                  assetId: relatedAsset.id,
+                  type: TransactionType.TRANSFER,
+                  direction: TransactionDirection.OUTGOING,
+                  status: TransactionStatus.PENDING,
+                },
+                include: { asset: true },
+              });
+
+            if (relatedAssetTransaction) {
+              throw new BadRequestException(
+                `You already have a pending transaction for ${relatedAssetTransaction.asset?.internalCode}`,
+              );
+            }
+          }
+        }
+
+        const signatureFile = await this.prisma.file.create({
+          data: {
+            filePath: normalizePath(signature.path),
+            createdById: req.user.sub,
+          },
+        });
+
+        const assetTransferBatch = await this.prisma.assetTransferBatch.create({
+          data: {
+            note,
+            createdById: req.user.sub,
+          },
+        });
+
         const assetTransaction = await this.prisma.assetTransaction.create({
           data: {
+            assetTransferBatchId: assetTransferBatch.id,
             assetId: asset.id,
             userId: fromUser.id,
             departmentId: department.id,
             officeId: office.id,
-            note,
-            signature: signature ? normalizePath(signature.path) : undefined,
+            signatureId: signatureFile.id,
             signedAt: new Date(),
-            role: TransactionRole.FROM,
             type: TransactionType.TRANSFER,
+            direction: TransactionDirection.INCOMING,
             status: TransactionStatus.COMPLETED,
+            createdById: req.user.sub,
           },
         });
 
         const confirmedAssetTransaction =
           await this.prisma.assetTransaction.create({
             data: {
+              assetTransferBatchId: assetTransferBatch.id,
               assetId: asset.id,
               userId: toUser.id,
               departmentId: department.id,
               officeId: office.id,
-              note,
-              role: TransactionRole.TO,
               type: TransactionType.TRANSFER,
+              direction: TransactionDirection.OUTGOING,
               status: TransactionStatus.PENDING,
+              createdById: req.user.sub,
             },
           });
 
-        return {
-          message: 'Asset transaction created successfully',
-          assetTransaction,
-          confirmedAssetTransaction,
-        };
-      } else if (type === TransactionType.RETURN) {
-        const transaction = await this.prisma.assetTransaction.findFirst({
-          where: {
-            assetId: asset.id,
-            userId: fromUser.id,
-            departmentId: department.id,
-            officeId: office.id,
-            role: TransactionRole.TO,
-            type: TransactionType.RETURN,
-            status: TransactionStatus.PENDING,
-          },
-        });
+        if (relatedAssets && relatedAssets.length > 0) {
+          for (const relatedAssetId of relatedAssets) {
+            await this.prisma.assetTransaction.create({
+              data: {
+                assetTransferBatchId: assetTransferBatch.id,
+                assetId: relatedAssetId,
+                userId: fromUser.id,
+                departmentId: department.id,
+                officeId: office.id,
+                signatureId: signatureFile.id,
+                signedAt: new Date(),
+                type: TransactionType.TRANSFER,
+                direction: TransactionDirection.INCOMING,
+                status: TransactionStatus.COMPLETED,
+                createdById: req.user.sub,
+              },
+            });
 
-        if (transaction) {
-          throw new BadRequestException(
-            `You already have a pending transaction for this asset`,
-          );
+            await this.prisma.assetTransaction.create({
+              data: {
+                assetTransferBatchId: assetTransferBatch.id,
+                assetId: relatedAssetId,
+                userId: toUser.id,
+                departmentId: department.id,
+                officeId: office.id,
+                type: TransactionType.TRANSFER,
+                direction: TransactionDirection.OUTGOING,
+                status: TransactionStatus.PENDING,
+                createdById: req.user.sub,
+              },
+            });
+          }
         }
-
-        const handoverFromTransaction =
-          await this.prisma.assetTransaction.findFirst({
-            where: {
-              assetId: asset.id,
-              departmentId: department.id,
-              officeId: office.id,
-              role: TransactionRole.FROM,
-              type: TransactionType.RETURN,
-              status: TransactionStatus.COMPLETED,
-            },
-            include: { user: true },
-            orderBy: { createdAt: 'desc' },
-          });
-
-        const handoverToTransaction =
-          await this.prisma.assetTransaction.findFirst({
-            where: {
-              assetId: asset.id,
-              departmentId: department.id,
-              officeId: office.id,
-              role: TransactionRole.TO,
-              type: TransactionType.RETURN,
-              status: TransactionStatus.COMPLETED,
-            },
-            include: { user: true },
-            orderBy: { createdAt: 'desc' },
-          });
-
-        if (handoverFromTransaction && handoverToTransaction) {
-          throw new BadRequestException(
-            `Asset already returned from ${handoverFromTransaction.user?.name} to ${handoverToTransaction.user?.name}`,
-          );
-        }
-
-        const confirmedAssetTransaction =
-          await this.prisma.assetTransaction.create({
-            data: {
-              assetId: asset.id,
-              userId: fromUser.id,
-              departmentId: department.id,
-              officeId: office.id,
-              note,
-              role: TransactionRole.FROM,
-              type: TransactionType.RETURN,
-              status: TransactionStatus.PENDING,
-            },
-          });
-
-        const assetTransaction = await this.prisma.assetTransaction.create({
-          data: {
-            assetId: asset.id,
-            userId: toUser.id,
-            departmentId: department.id,
-            officeId: office.id,
-            note,
-            signature: signature ? normalizePath(signature.path) : undefined,
-            signedAt: new Date(),
-            role: TransactionRole.TO,
-            type: TransactionType.RETURN,
-            status: TransactionStatus.COMPLETED,
-          },
-        });
 
         return {
           message: 'Asset transaction created successfully',
@@ -360,561 +394,5 @@ export class AssetTransactionsService {
       }
       throw error;
     }
-  }
-
-  async getConfirmRequest(assetId: string, type: TransactionType) {
-    const assetTransaction = await this.prisma.assetTransaction.findFirst({
-      where: {
-        assetId,
-        type,
-        status: TransactionStatus.PENDING,
-        deletedAt: null,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!assetTransaction) {
-      throw new NotFoundException(
-        `requestAssetTransaction with assetId ${assetId} and type ${type} not found`,
-      );
-    }
-
-    return {
-      message: 'OK',
-    };
-  }
-
-  async confirmRequest(
-    assetId: string,
-    type: TransactionType,
-    signature?: Express.Multer.File,
-  ) {
-    try {
-      if (type === TransactionType.TRANSFER) {
-        const assetTransaction = await this.prisma.assetTransaction.findFirst({
-          where: {
-            assetId,
-            role: TransactionRole.TO,
-            type: TransactionType.TRANSFER,
-            status: TransactionStatus.PENDING,
-            deletedAt: null,
-          },
-          orderBy: { createdAt: 'desc' },
-        });
-
-        if (!assetTransaction) {
-          throw new NotFoundException(
-            `assetTransaction with assetId ${assetId} not found`,
-          );
-        }
-
-        const confirmedAssetTransaction =
-          await this.prisma.assetTransaction.update({
-            where: { id: assetTransaction.id },
-            data: {
-              signature: signature ? normalizePath(signature.path) : undefined,
-              signedAt: new Date(),
-              status: TransactionStatus.COMPLETED,
-            },
-            include: {
-              asset: {
-                include: {
-                  deviceModel: true,
-                  deviceType: true,
-                },
-              },
-              user: true,
-              office: true,
-              department: true,
-            },
-          });
-
-        const requestAssetTransaction =
-          await this.prisma.assetTransaction.findFirst({
-            where: {
-              assetId,
-              role: TransactionRole.FROM,
-              type: TransactionType.TRANSFER,
-              status: TransactionStatus.COMPLETED,
-              deletedAt: null,
-            },
-            include: {
-              user: true,
-            },
-          });
-
-        if (!requestAssetTransaction) {
-          throw new NotFoundException(
-            `requestAssetTransaction with assetId ${assetId} not found`,
-          );
-        }
-
-        const templatePath = path.join(
-          process.cwd(),
-          'public',
-          'templates',
-          'handover-template.html',
-        );
-        if (!fs.existsSync(templatePath)) {
-          throw new NotFoundException(
-            `HTML template not found at ${templatePath}`,
-          );
-        }
-
-        let html = fs.readFileSync(templatePath, 'utf-8');
-
-        const logoPath = path.join(
-          process.cwd(),
-          'public',
-          'logo',
-          `${confirmedAssetTransaction.office?.shortName}.png`,
-        );
-        if (!fs.existsSync(logoPath)) {
-          throw new NotFoundException(`Logo not found at ${logoPath}`);
-        }
-        const logoBase64 = fs.readFileSync(logoPath).toString('base64');
-        const logoDataUrl = `data:image/png;base64,${logoBase64}`;
-
-        const signFromPath = path.join(
-          process.cwd(),
-          requestAssetTransaction.signature || '',
-        );
-        if (!fs.existsSync(signFromPath)) {
-          throw new NotFoundException(`Signature not found at ${signFromPath}`);
-        }
-        const signFromBase64 = fs.readFileSync(signFromPath).toString('base64');
-        const signFromDataUrl = `data:image/png;base64,${signFromBase64}`;
-
-        const signToPath = path.join(
-          process.cwd(),
-          confirmedAssetTransaction.signature || '',
-        );
-        if (!fs.existsSync(signToPath)) {
-          throw new NotFoundException(`Signature not found at ${signToPath}`);
-        }
-        const signToBase64 = fs.readFileSync(signToPath).toString('base64');
-        const signToDataUrl = `data:image/png;base64,${signToBase64}`;
-
-        // Điền dữ liệu vào template
-        html = html
-          .replace(
-            /{{date}}/g,
-            dayjs(requestAssetTransaction.signedAt).format('YYYY-MM-DD') ?? '',
-          )
-          .replace(/{{sender}}/g, requestAssetTransaction.user?.name ?? '')
-          .replace(/{{receiver}}/g, confirmedAssetTransaction.user?.name ?? '')
-          .replace(
-            /{{department}}/g,
-            confirmedAssetTransaction.department?.name ?? '',
-          )
-          .replace(/{{office}}/g, confirmedAssetTransaction.office?.name ?? '')
-          .replace(/{{logo}}/g, logoDataUrl)
-          .replace(/{{note}}/g, requestAssetTransaction.note ?? '')
-          .replace(
-            /{{assetName}}/g,
-            confirmedAssetTransaction.asset?.deviceModel?.name ?? '',
-          )
-          .replace(
-            /{{serialNumber}}/g,
-            confirmedAssetTransaction.asset?.serialNumber ?? '',
-          )
-          .replace(/{{fromSignature}}/g, signFromDataUrl)
-          .replace(/{{toSignature}}/g, signToDataUrl)
-          .replace(
-            /{{senderSignedAt}}/g,
-            dayjs(requestAssetTransaction.signedAt).format(
-              'HH:mm:ss YYYY-MM-DD',
-            ) ?? '',
-          )
-          .replace(
-            /{{receiverSignedAt}}/g,
-            dayjs(confirmedAssetTransaction.signedAt).format(
-              'HH:mm:ss YYYY-MM-DD',
-            ) ?? '',
-          );
-
-        // Tạo thư mục pdf nếu chưa có
-        const pdfDir = path.join(process.cwd(), '/public/pdf');
-        if (!fs.existsSync(pdfDir)) {
-          fs.mkdirSync(pdfDir, { recursive: true });
-        }
-
-        const fileName = `handover_${confirmedAssetTransaction.user?.name?.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${dayjs(confirmedAssetTransaction.signedAt).format('YYYY-MM-DD')}.pdf`;
-        const outputPath = path.join(pdfDir, fileName);
-
-        // Render PDF bằng Puppeteer
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
-        await page.setContent(html);
-        await page.pdf({ path: outputPath, format: 'A4' });
-        await browser.close();
-
-        const returnAssetTransaction =
-          await this.prisma.assetTransaction.update({
-            where: { id: assetTransaction.id },
-            data: {
-              handoverFilePath: `/public/pdf/${fileName}`,
-            },
-            include: {
-              asset: {
-                include: {
-                  deviceModel: true,
-                  deviceType: true,
-                },
-              },
-              user: true,
-              office: true,
-              department: true,
-            },
-          });
-
-        return {
-          message: 'Asset transaction confirmed successfully',
-          returnAssetTransaction,
-        };
-      } else if (type === TransactionType.RETURN) {
-        const assetTransaction = await this.prisma.assetTransaction.findFirst({
-          where: {
-            assetId,
-            role: TransactionRole.FROM,
-            type: TransactionType.RETURN,
-            status: TransactionStatus.PENDING,
-            deletedAt: null,
-          },
-          orderBy: { createdAt: 'desc' },
-        });
-
-        if (!assetTransaction) {
-          throw new NotFoundException(
-            `assetTransaction with assetId ${assetId} not found`,
-          );
-        }
-
-        const confirmedAssetTransaction =
-          await this.prisma.assetTransaction.update({
-            where: { id: assetTransaction.id },
-            data: {
-              signature: signature ? normalizePath(signature.path) : undefined,
-              signedAt: new Date(),
-              status: TransactionStatus.COMPLETED,
-            },
-            include: {
-              asset: {
-                include: {
-                  deviceModel: true,
-                  deviceType: true,
-                },
-              },
-              user: true,
-              office: true,
-              department: true,
-            },
-          });
-
-        const requestAssetTransaction =
-          await this.prisma.assetTransaction.findFirst({
-            where: {
-              assetId,
-              role: TransactionRole.TO,
-              type: TransactionType.RETURN,
-              status: TransactionStatus.COMPLETED,
-              deletedAt: null,
-            },
-            include: {
-              asset: {
-                include: {
-                  deviceModel: true,
-                  deviceType: true,
-                },
-              },
-              user: true,
-              office: true,
-              department: true,
-            },
-          });
-
-        if (!requestAssetTransaction) {
-          throw new NotFoundException(
-            `requestAssetTransaction with assetId ${assetId} not found`,
-          );
-        }
-
-        const templatePath = path.join(
-          process.cwd(),
-          'public',
-          'templates',
-          'handover-template.html',
-        );
-        if (!fs.existsSync(templatePath)) {
-          throw new NotFoundException(
-            `HTML template not found at ${templatePath}`,
-          );
-        }
-
-        let html = fs.readFileSync(templatePath, 'utf-8');
-
-        const logoPath = path.join(
-          process.cwd(),
-          'public',
-          'logo',
-          `${requestAssetTransaction.office?.shortName}.png`,
-        );
-        if (!fs.existsSync(logoPath)) {
-          throw new NotFoundException(`Logo not found at ${logoPath}`);
-        }
-        const logoBase64 = fs.readFileSync(logoPath).toString('base64');
-        const logoDataUrl = `data:image/png;base64,${logoBase64}`;
-
-        const signFromPath = path.join(
-          process.cwd(),
-          confirmedAssetTransaction.signature || '',
-        );
-        if (!fs.existsSync(signFromPath)) {
-          throw new NotFoundException(`Signature not found at ${signFromPath}`);
-        }
-        const signFromBase64 = fs.readFileSync(signFromPath).toString('base64');
-        const signFromDataUrl = `data:image/png;base64,${signFromBase64}`;
-
-        const signToPath = path.join(
-          process.cwd(),
-          requestAssetTransaction.signature || '',
-        );
-        if (!fs.existsSync(signToPath)) {
-          throw new NotFoundException(`Signature not found at ${signToPath}`);
-        }
-        const signToBase64 = fs.readFileSync(signToPath).toString('base64');
-        const signToDataUrl = `data:image/png;base64,${signToBase64}`;
-
-        // Điền dữ liệu vào template
-        html = html
-          .replace(
-            /{{date}}/g,
-            dayjs(confirmedAssetTransaction.signedAt).format('YYYY-MM-DD') ??
-              '',
-          )
-          .replace(/{{sender}}/g, confirmedAssetTransaction.user?.name ?? '')
-          .replace(/{{receiver}}/g, requestAssetTransaction.user?.name ?? '')
-          .replace(
-            /{{department}}/g,
-            requestAssetTransaction.department?.name ?? '',
-          )
-          .replace(/{{office}}/g, requestAssetTransaction.office?.name ?? '')
-          .replace(/{{logo}}/g, logoDataUrl)
-          .replace(/{{note}}/g, confirmedAssetTransaction.note ?? '')
-          .replace(
-            /{{assetName}}/g,
-            requestAssetTransaction.asset?.deviceModel?.name ?? '',
-          )
-          .replace(
-            /{{serialNumber}}/g,
-            requestAssetTransaction.asset?.serialNumber ?? '',
-          )
-          .replace(/{{fromSignature}}/g, signFromDataUrl)
-          .replace(/{{toSignature}}/g, signToDataUrl)
-          .replace(
-            /{{senderSignedAt}}/g,
-            dayjs(confirmedAssetTransaction.signedAt).format(
-              'HH:mm:ss YYYY-MM-DD',
-            ) ?? '',
-          )
-          .replace(
-            /{{receiverSignedAt}}/g,
-            dayjs(requestAssetTransaction.signedAt).format(
-              'HH:mm:ss YYYY-MM-DD',
-            ) ?? '',
-          );
-
-        // Tạo thư mục pdf nếu chưa có
-        const pdfDir = path.join(process.cwd(), '/public/pdf');
-        if (!fs.existsSync(pdfDir)) {
-          fs.mkdirSync(pdfDir, { recursive: true });
-        }
-
-        const fileName = `handover_${requestAssetTransaction.user?.name?.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${dayjs(confirmedAssetTransaction.signedAt).format('YYYY-MM-DD')}.pdf`;
-        const outputPath = path.join(pdfDir, fileName);
-
-        // Render PDF bằng Puppeteer
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
-        await page.setContent(html);
-        await page.pdf({ path: outputPath, format: 'A4' });
-        await browser.close();
-
-        const returnAssetTransaction =
-          await this.prisma.assetTransaction.update({
-            where: { id: assetTransaction.id },
-            data: {
-              handoverFilePath: `/public/pdf/${fileName}`,
-            },
-            include: {
-              asset: {
-                include: {
-                  deviceModel: true,
-                  deviceType: true,
-                },
-              },
-              user: true,
-              office: true,
-              department: true,
-            },
-          });
-
-        return {
-          message: 'Asset transaction confirmed successfully',
-          returnAssetTransaction,
-        };
-      } else {
-        throw new BadRequestException('Invalid transaction type');
-      }
-    } catch (error) {
-      if (signature?.path) {
-        try {
-          fs.unlinkSync(signature.path);
-        } catch (unlinkErr) {
-          console.warn(
-            `Failed to delete temp file: ${signature.path}`,
-            unlinkErr,
-          );
-        }
-      }
-      throw error;
-    }
-  }
-
-  async createHandover(assetId: string) {
-    const requestAssetTransaction =
-      await this.prisma.assetTransaction.findFirst({
-        where: {
-          assetId,
-          role: TransactionRole.FROM,
-          type: TransactionType.TRANSFER,
-          status: TransactionStatus.PENDING,
-          deletedAt: null,
-        },
-        include: {
-          user: true,
-        },
-      });
-
-    if (!requestAssetTransaction) {
-      throw new NotFoundException(
-        `requestAssetTransaction with assetId ${assetId} not found`,
-      );
-    }
-
-    const confirmAssetTransaction =
-      await this.prisma.assetTransaction.findFirst({
-        where: {
-          assetId,
-          role: TransactionRole.TO,
-          type: TransactionType.TRANSFER,
-          status: TransactionStatus.PENDING,
-          deletedAt: null,
-        },
-        include: {
-          asset: {
-            include: {
-              deviceModel: true,
-              deviceType: true,
-            },
-          },
-          user: true,
-          office: true,
-          department: true,
-        },
-      });
-
-    if (!confirmAssetTransaction) {
-      throw new NotFoundException(
-        `confirmAssetTransaction with assetId ${assetId} not found`,
-      );
-    }
-
-    const templatePath = path.join(
-      process.cwd(),
-      'public',
-      'templates',
-      'handover-template.html',
-    );
-    if (!fs.existsSync(templatePath)) {
-      throw new NotFoundException(`HTML template not found at ${templatePath}`);
-    }
-
-    let html = fs.readFileSync(templatePath, 'utf-8');
-
-    const logoPath = path.join(
-      process.cwd(),
-      'public',
-      'logo',
-      `${confirmAssetTransaction.office?.shortName}.png`,
-    );
-    if (!fs.existsSync(logoPath)) {
-      throw new NotFoundException(`Logo not found at ${logoPath}`);
-    }
-    const logoBase64 = fs.readFileSync(logoPath).toString('base64');
-    const logoDataUrl = `data:image/png;base64,${logoBase64}`;
-
-    const signFromPath = path.join(
-      process.cwd(),
-      requestAssetTransaction.signature || '',
-    );
-    if (!fs.existsSync(signFromPath)) {
-      throw new NotFoundException(`Signature not found at ${signFromPath}`);
-    }
-    const signFromBase64 = fs.readFileSync(signFromPath).toString('base64');
-    const signFromDataUrl = `data:image/png;base64,${signFromBase64}`;
-
-    const signToPath = path.join(
-      process.cwd(),
-      confirmAssetTransaction.signature || '',
-    );
-    if (!fs.existsSync(signToPath)) {
-      throw new NotFoundException(`Signature not found at ${signToPath}`);
-    }
-    const signToBase64 = fs.readFileSync(signToPath).toString('base64');
-    const signToDataUrl = `data:image/png;base64,${signToBase64}`;
-
-    // Điền dữ liệu vào template
-    html = html
-      .replace(/{{date}}/g, new Date().toLocaleDateString('vi-VN'))
-      .replace(/{{sender}}/g, requestAssetTransaction.user?.name ?? '')
-      .replace(/{{receiver}}/g, confirmAssetTransaction.user?.name ?? '')
-      .replace(
-        /{{department}}/g,
-        confirmAssetTransaction.department?.name ?? '',
-      )
-      .replace(/{{office}}/g, confirmAssetTransaction.office?.name ?? '')
-      .replace(/{{logo}}/g, logoDataUrl)
-      .replace(
-        /{{assetName}}/g,
-        confirmAssetTransaction.asset?.deviceModel?.name ?? '',
-      )
-      .replace(
-        /{{serialNumber}}/g,
-        confirmAssetTransaction.asset?.serialNumber ?? '',
-      )
-      .replace(/{{fromSignature}}/g, signFromDataUrl)
-      .replace(/{{toSignature}}/g, signToDataUrl);
-
-    // Tạo thư mục pdf nếu chưa có
-    const pdfDir = path.join(process.cwd(), '/public/pdf');
-    if (!fs.existsSync(pdfDir)) {
-      fs.mkdirSync(pdfDir, { recursive: true });
-    }
-
-    const fileName = `handover-${confirmAssetTransaction.user?.name?.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${Date.now()}.pdf`;
-    const outputPath = path.join(pdfDir, fileName);
-
-    // Render PDF bằng Puppeteer
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.setContent(html);
-    await page.pdf({ path: outputPath, format: 'A4' });
-    await browser.close();
-
-    return {
-      message: 'PDF file generated',
-      downloadUrl: `/public/pdf/${fileName}`,
-    };
   }
 }

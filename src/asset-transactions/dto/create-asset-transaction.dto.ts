@@ -1,20 +1,14 @@
 import { TransactionType } from '@prisma/client';
-import { Type } from 'class-transformer';
-import { IsObject, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateAssetTransactionDto {
-  @IsOptional()
-  @IsString({ message: 'note must be a string' })
-  note?: string;
-
-  @IsOptional()
-  @IsObject({ message: 'customProperties must be a valid JSON object' })
-  @Type(() => Object)
-  files?: Record<string, any>;
-
   @IsString({ message: 'type must be a string' })
   @MinLength(1, { message: 'type must not be empty' })
   type: TransactionType;
+
+  @IsOptional()
+  @IsString({ message: 'note must be a string' })
+  note?: string;
 
   @IsString({ message: 'assetId must be a string' })
   assetId: string;
@@ -34,4 +28,20 @@ export class CreateAssetTransactionDto {
   @IsOptional()
   @IsString({ message: 'toOfficeId must be a string' })
   officeId?: string;
+
+  @IsOptional()
+  @IsString({ message: 'transactionBatchId must be a string' })
+  transactionBatchId?: string;
+
+  @IsOptional()
+  @IsString({ message: 'signatureId must be a string' })
+  signatureId?: string;
+
+  @IsOptional()
+  @IsArray({ message: 'relatedAssets must be an array' })
+  @IsString({
+    each: true,
+    message: 'relatedAssets must be an array of strings',
+  })
+  relatedAssets?: string[];
 }

@@ -21,6 +21,8 @@ import {
   MicrosoftRequest,
 } from 'src/common/interfaces/auth.interface';
 import { getClientIp, parseLifetimeToDays } from 'src/common/utils/function';
+import { CreateUserDto } from 'src/users/dto/create-user.dto';
+import { ADMIN_ID, DEFAULT_PASSWORD } from 'src/common/const';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +31,20 @@ export class AuthService {
     private readonly jwtService: JwtService,
     @Inject(ConfigService) private readonly configService: ConfigService,
   ) {}
+
+  private async validateUnique(email: string, exclude?: string) {
+    const data = await this.prisma.user.findFirst({
+      where: {
+        email,
+        deletedAt: null,
+        ...(exclude ? { NOT: { id: exclude } } : {}),
+      },
+    });
+
+    if (data) {
+      throw new BadRequestException(`user with email ${email} already exists`);
+    }
+  }
 
   async login(req: Request, loginDto: LoginDto) {
     const { email, password } = loginDto;
@@ -73,6 +89,7 @@ export class AuthService {
         isActive: true,
         ipAddress,
         userAgent: userAgent || 'unknown',
+        createdById: user.id,
       },
     });
 
@@ -80,6 +97,28 @@ export class AuthService {
       message: 'Login successful',
       accessToken,
       refreshToken,
+      user: omitFields(user, ['password']),
+    };
+  }
+
+  async register(createUserDto: CreateUserDto) {
+    const { email, password, ...rest } = createUserDto;
+    await this.validateUnique(email);
+
+    const defaultPassword = password || DEFAULT_PASSWORD;
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    const user = await this.prisma.user.create({
+      data: {
+        ...rest,
+        email,
+        password: hashedPassword,
+        createdById: ADMIN_ID,
+      },
+    });
+
+    return {
+      message: 'User created successfully',
       user: omitFields(user, ['password']),
     };
   }
@@ -354,6 +393,7 @@ export class AuthService {
         isActive: true,
         ipAddress,
         userAgent: userAgent || 'unknown',
+        createdById: user.id,
       },
     });
 

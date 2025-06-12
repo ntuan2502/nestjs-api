@@ -6,26 +6,47 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOfficeDto } from './dto/create-office.dto';
 import { UpdateOfficeDto } from './dto/update-office.dto';
-import { parseInclude } from 'src/common/utils/parseInclude';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class OfficesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createOfficeDto: CreateOfficeDto) {
-    const { taxCode } = createOfficeDto;
-    const existingOffice = await this.prisma.office.findFirst({
-      where: { taxCode, deletedAt: null },
+  private async findActiveOrFail(id: string) {
+    const data = await this.prisma.office.findFirst({
+      where: { id, deletedAt: null },
     });
 
-    if (existingOffice) {
-      throw new BadRequestException(
-        `Office with taxCode ${taxCode} already exists`,
-      );
+    if (!data) {
+      throw new NotFoundException(`office with id ${id} not found`);
     }
 
+    return data;
+  }
+
+  private async validateUnique(taxCode: string, exclude?: string) {
+    const data = await this.prisma.office.findFirst({
+      where: {
+        taxCode,
+        deletedAt: null,
+        ...(exclude ? { NOT: { id: exclude } } : {}),
+      },
+    });
+
+    if (data) {
+      throw new BadRequestException(
+        `office with taxCode ${taxCode} already exists`,
+      );
+    }
+  }
+
+  async create(req: AuthRequest, createOfficeDto: CreateOfficeDto) {
+    const { taxCode } = createOfficeDto;
+    await this.validateUnique(taxCode);
+
     const office = await this.prisma.office.create({
-      data: createOfficeDto,
+      data: { ...createOfficeDto, createdById: req.user.sub },
     });
 
     return {
@@ -34,11 +55,16 @@ export class OfficesService {
     };
   }
 
-  async findAll(includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findAll(isDeleted: boolean = false) {
+    const whereClause = isDeleted ? undefined : { deletedAt: null };
+
     const offices = await this.prisma.office.findMany({
-      where: { deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -48,11 +74,19 @@ export class OfficesService {
     };
   }
 
-  async findOne(id: string, includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findOne(id: string, isDeleted: boolean = false) {
+    const whereClause: Prisma.OfficeWhereInput = { id };
+
+    if (!isDeleted) {
+      whereClause.deletedAt = null;
+    }
     const office = await this.prisma.office.findFirst({
-      where: { id, deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
     });
 
     if (!office) {
@@ -65,31 +99,17 @@ export class OfficesService {
     };
   }
 
-  async update(id: string, updateOfficeDto: UpdateOfficeDto) {
-    const office = await this.prisma.office.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!office) {
-      throw new NotFoundException(`Office with id ${id} not found`);
-    }
+  async update(req: AuthRequest, id: string, updateOfficeDto: UpdateOfficeDto) {
+    await this.findActiveOrFail(id);
 
     const { taxCode } = updateOfficeDto;
-
-    if (taxCode !== office.taxCode) {
-      const existingOffice = await this.prisma.office.findFirst({
-        where: { taxCode, deletedAt: null },
-      });
-      if (existingOffice) {
-        throw new BadRequestException(
-          `Office with taxCode ${taxCode} already exists`,
-        );
-      }
+    if (taxCode) {
+      await this.validateUnique(taxCode, id);
     }
 
     const updateOffice = await this.prisma.office.update({
       where: { id },
-      data: updateOfficeDto,
+      data: { ...updateOfficeDto, updatedById: req.user.sub },
     });
     return {
       message: 'Office updated successfully',
@@ -97,18 +117,12 @@ export class OfficesService {
     };
   }
 
-  async remove(id: string) {
-    const office = await this.prisma.office.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!office) {
-      throw new NotFoundException(`Office with id ${id} not found`);
-    }
+  async remove(req: AuthRequest, id: string) {
+    await this.findActiveOrFail(id);
 
     await this.prisma.office.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedById: req.user.sub },
     });
 
     return {

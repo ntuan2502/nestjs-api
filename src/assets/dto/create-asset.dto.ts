@@ -1,6 +1,11 @@
-import { Warranty } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsObject, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class CreateAssetDto {
   @IsString({ message: 'internalCode must be a string' })
@@ -16,13 +21,13 @@ export class CreateAssetDto {
   purchaseDate?: Date;
 
   @IsOptional()
-  @IsString({ message: 'warranty must be a string' })
-  warranty?: Warranty;
+  @IsNumber({}, { message: 'warranty must be a number' })
+  warranty?: number;
 
   @IsOptional()
   @IsObject({ message: 'customProperties must be a valid JSON object' })
   @Type(() => Object)
-  customProperties?: Record<string, any>;
+  customProperties?: Record<string, string>;
 
   @IsOptional()
   @IsString({ message: 'deviceModelId must be a string' })

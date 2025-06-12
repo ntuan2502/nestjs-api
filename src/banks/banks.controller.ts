@@ -7,40 +7,45 @@ import {
   Param,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import { BanksService } from './banks.service';
 import { CreateBankDto } from './dto/create-bank.dto';
 import { UpdateBankDto } from './dto/update-bank.dto';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Controller('banks')
 export class BanksController {
   constructor(private readonly banksService: BanksService) {}
 
   @Post()
-  create(@Body() createBankDto: CreateBankDto) {
-    return this.banksService.create(createBankDto);
+  create(@Req() req: AuthRequest, @Body() createBankDto: CreateBankDto) {
+    return this.banksService.create(req, createBankDto);
   }
 
   @Get()
-  findAll(@Query('include') includeParam?: string | string[]) {
-    return this.banksService.findAll(includeParam);
+  findAll(@Query('isDeleted') isDeleted?: string) {
+    const shouldIncludeDeleted = isDeleted === 'true';
+    return this.banksService.findAll(shouldIncludeDeleted);
   }
 
   @Get(':id')
-  findOne(
-    @Param('id') id: string,
-    @Query('include') includeParam?: string | string[],
-  ) {
-    return this.banksService.findOne(id, includeParam);
+  findOne(@Param('id') id: string, @Query('isDeleted') isDeleted: string) {
+    const shouldIncludeDeleted = isDeleted === 'true';
+    return this.banksService.findOne(id, shouldIncludeDeleted);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBankDto: UpdateBankDto) {
-    return this.banksService.update(id, updateBankDto);
+  update(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Body() updateBankDto: UpdateBankDto,
+  ) {
+    return this.banksService.update(req, id, updateBankDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.banksService.remove(id);
+  remove(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.banksService.remove(req, id);
   }
 }

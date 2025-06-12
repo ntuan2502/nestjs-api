@@ -6,26 +6,48 @@ import {
 import { CreateBankAccountDto } from './dto/create-bank-account.dto';
 import { UpdateBankAccountDto } from './dto/update-bank-account.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { parseInclude } from 'src/common/utils/parseInclude';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class BankAccountsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createBankAccountDto: CreateBankAccountDto) {
-    const { accountName, accountNumber } = createBankAccountDto;
-    const existingBank = await this.prisma.bankAccount.findFirst({
-      where: { accountName, accountNumber, deletedAt: null },
+  private async findActiveOrFail(id: string) {
+    const data = await this.prisma.bankAccount.findFirst({
+      where: { id, deletedAt: null },
     });
 
-    if (existingBank) {
-      throw new BadRequestException(
-        `Bank account with name ${accountName} and account number ${accountNumber} already exists`,
-      );
+    if (!data) {
+      throw new NotFoundException(`bankAccount with id ${id} not found`);
     }
 
+    return data;
+  }
+
+  private async validateUnique(name: string, number: string, exclude?: string) {
+    const data = await this.prisma.bankAccount.findFirst({
+      where: {
+        name,
+        number,
+        deletedAt: null,
+        ...(exclude ? { NOT: { id: exclude } } : {}),
+      },
+    });
+
+    if (data) {
+      throw new BadRequestException(
+        `bankAccount with name ${name} already exists`,
+      );
+    }
+  }
+
+  async create(req: AuthRequest, createBankAccountDto: CreateBankAccountDto) {
+    const { name, number } = createBankAccountDto;
+    await this.validateUnique(name, number);
+
     const bankAccount = await this.prisma.bankAccount.create({
-      data: createBankAccountDto,
+      data: { ...createBankAccountDto, createdById: req.user.sub },
     });
 
     return {
@@ -34,12 +56,16 @@ export class BankAccountsService {
     };
   }
 
-  async findAll(includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findAll(isDeleted: boolean = false) {
+    const whereClause = isDeleted ? undefined : { deletedAt: null };
     const bankAccounts = await this.prisma.bankAccount.findMany({
-      where: { deletedAt: null },
-      include,
-      orderBy: { accountName: 'asc' },
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
+      orderBy: { name: 'asc' },
     });
 
     return {
@@ -48,11 +74,18 @@ export class BankAccountsService {
     };
   }
 
-  async findOne(id: string, includeParam?: string | string[]) {
-    const include = parseInclude(includeParam);
+  async findOne(id: string, isDeleted: boolean = false) {
+    const whereClause: Prisma.BankAccountWhereInput = { id };
+    if (!isDeleted) {
+      whereClause.deletedAt = null;
+    }
     const bankAccount = await this.prisma.bankAccount.findFirst({
-      where: { id, deletedAt: null },
-      include,
+      where: whereClause,
+      include: {
+        createdBy: { select: { id: true, email: true, name: true } },
+        updatedBy: { select: { id: true, email: true, name: true } },
+        deletedBy: { select: { id: true, email: true, name: true } },
+      },
     });
 
     if (!bankAccount) {
@@ -65,38 +98,21 @@ export class BankAccountsService {
     };
   }
 
-  async update(id: string, updateBankAccountDto: UpdateBankAccountDto) {
-    const bankAccount = await this.prisma.bankAccount.findFirst({
-      where: { id, deletedAt: null },
-    });
+  async update(
+    req: AuthRequest,
+    id: string,
+    updateBankAccountDto: UpdateBankAccountDto,
+  ) {
+    await this.findActiveOrFail(id);
 
-    if (!bankAccount) {
-      throw new NotFoundException(`Bank account with id ${id} not found`);
-    }
-
-    const { accountName, accountNumber } = updateBankAccountDto;
-    if (
-      accountName !== bankAccount.accountName &&
-      accountNumber !== bankAccount.accountNumber
-    ) {
-      const existingBank = await this.prisma.bankAccount.findFirst({
-        where: {
-          accountName,
-          accountNumber,
-          deletedAt: null,
-        },
-      });
-
-      if (existingBank) {
-        throw new BadRequestException(
-          `Bank account with name ${accountName} and account number ${accountNumber} already exists`,
-        );
-      }
+    const { name, number } = updateBankAccountDto;
+    if (name && number) {
+      await this.validateUnique(name, number, id);
     }
 
     const updatedBank = await this.prisma.bankAccount.update({
       where: { id },
-      data: updateBankAccountDto,
+      data: { ...updateBankAccountDto, updatedById: req.user.sub },
     });
 
     return {
@@ -105,18 +121,12 @@ export class BankAccountsService {
     };
   }
 
-  async remove(id: string) {
-    const bankAccount = await this.prisma.bankAccount.findFirst({
-      where: { id, deletedAt: null },
-    });
-
-    if (!bankAccount) {
-      throw new NotFoundException(`Bank account with id ${id} not found`);
-    }
+  async remove(req: AuthRequest, id: string) {
+    await this.findActiveOrFail(id);
 
     await this.prisma.bankAccount.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedById: req.user.sub },
     });
 
     return {

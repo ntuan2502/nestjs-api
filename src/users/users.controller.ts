@@ -12,14 +12,12 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Public } from 'src/common/decorators/public.decorator';
 import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Public()
   @Post()
   create(@Req() req: AuthRequest, @Body() createUserDto: CreateUserDto) {
     return this.usersService.create(req, createUserDto);

@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { AssetTransferBatchService } from './asset-transfer-batch.service';
-import { AssetTransferBatchController } from './asset-transfer-batch.controller';
+import { AssetTransferBatchesService } from './asset-transfer-batches.service';
+import { AssetTransferBatchesController } from './asset-transfer-batches.controller';
 
 @Module({
   imports: [
@@ -16,7 +16,7 @@ import { AssetTransferBatchController } from './asset-transfer-batch.controller'
       }),
     }),
   ],
-  controllers: [AssetTransferBatchController],
-  providers: [AssetTransferBatchService],
+  controllers: [AssetTransferBatchesController],
+  providers: [AssetTransferBatchesService],
 })
-export class AssetTransferBatchModule {}
+export class AssetTransferBatchesModule {}

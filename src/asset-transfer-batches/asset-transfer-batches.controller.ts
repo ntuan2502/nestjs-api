@@ -11,7 +11,7 @@ import {
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
-import { AssetTransferBatchService } from './asset-transfer-batch.service';
+import { AssetTransferBatchesService } from './asset-transfer-batches.service';
 import { CreateAssetTransferBatchDto } from './dto/create-asset-transfer-batch.dto';
 import { UpdateAssetTransferBatchDto } from './dto/update-asset-transfer-batch.dto';
 import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
@@ -19,10 +19,10 @@ import { TransactionType } from '@prisma/client';
 import { Public } from 'src/common/decorators/public.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 
-@Controller('asset-transfer-batch')
-export class AssetTransferBatchController {
+@Controller('asset-transfer-batches')
+export class AssetTransferBatchesController {
   constructor(
-    private readonly assetTransferBatchService: AssetTransferBatchService,
+    private readonly assetTransferBatchesService: AssetTransferBatchesService,
   ) {}
 
   @Post()
@@ -30,7 +30,7 @@ export class AssetTransferBatchController {
     @Req() req: AuthRequest,
     @Body() createAssetTransferBatchDto: CreateAssetTransferBatchDto,
   ) {
-    return this.assetTransferBatchService.create(
+    return this.assetTransferBatchesService.create(
       req,
       createAssetTransferBatchDto,
     );
@@ -39,13 +39,13 @@ export class AssetTransferBatchController {
   @Get()
   findAll(@Query('isDeleted') isDeleted?: string) {
     const shouldIncludeDeleted = isDeleted === 'true';
-    return this.assetTransferBatchService.findAll(shouldIncludeDeleted);
+    return this.assetTransferBatchesService.findAll(shouldIncludeDeleted);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @Query('isDeleted') isDeleted: string) {
     const shouldIncludeDeleted = isDeleted === 'true';
-    return this.assetTransferBatchService.findOne(id, shouldIncludeDeleted);
+    return this.assetTransferBatchesService.findOne(id, shouldIncludeDeleted);
   }
 
   @Patch(':id')
@@ -54,7 +54,7 @@ export class AssetTransferBatchController {
     @Param('id') id: string,
     @Body() updateAssetTransferBatchDto: UpdateAssetTransferBatchDto,
   ) {
-    return this.assetTransferBatchService.update(
+    return this.assetTransferBatchesService.update(
       req,
       id,
       updateAssetTransferBatchDto,
@@ -63,7 +63,7 @@ export class AssetTransferBatchController {
 
   @Delete(':id')
   remove(@Req() req: AuthRequest, @Param('id') id: string) {
-    return this.assetTransferBatchService.remove(req, id);
+    return this.assetTransferBatchesService.remove(req, id);
   }
 
   @Public()
@@ -72,7 +72,7 @@ export class AssetTransferBatchController {
     @Param('id') id: string,
     @Query('type') type: TransactionType,
   ) {
-    return this.assetTransferBatchService.getConfirmRequest(id, type);
+    return this.assetTransferBatchesService.getConfirmRequest(id, type);
   }
 
   @Public()
@@ -83,6 +83,6 @@ export class AssetTransferBatchController {
     @Query('type') type: TransactionType,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.assetTransferBatchService.confirmRequest(id, type, file);
+    return this.assetTransferBatchesService.confirmRequest(id, type, file);
   }
 }

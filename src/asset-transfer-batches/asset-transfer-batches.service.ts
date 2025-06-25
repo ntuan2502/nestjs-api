@@ -16,7 +16,7 @@ import { normalizePath } from 'src/common/utils/function';
 import { ADMIN_ID } from 'src/common/const';
 
 @Injectable()
-export class AssetTransferBatchService {
+export class AssetTransferBatchesService {
   constructor(private prisma: PrismaService) {}
   private async findActiveOrFail(id: string) {
     const data = await this.prisma.assetTransferBatch.findFirst({
@@ -50,7 +50,7 @@ export class AssetTransferBatchService {
   async findAll(isDeleted: boolean = false) {
     const whereClause = isDeleted ? undefined : { deletedAt: null };
 
-    const assetTransferBatch = await this.prisma.assetTransferBatch.findMany({
+    const assetTransferBatches = await this.prisma.assetTransferBatch.findMany({
       where: whereClause,
       include: {
         createdBy: { select: { id: true, email: true, name: true } },
@@ -68,12 +68,12 @@ export class AssetTransferBatchService {
         },
         handover: true,
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
 
     return {
-      message: 'assetTransferBatch fetched successfully',
-      assetTransferBatch,
+      message: 'assetTransferBatches fetched successfully',
+      assetTransferBatches,
     };
   }
 
@@ -386,7 +386,7 @@ export class AssetTransferBatchService {
             createdById: ADMIN_ID,
           },
         });
-        const returnAssetTransaction =
+        const returnAssetTransferBatch =
           await this.prisma.assetTransferBatch.update({
             where: { id: assetTransferBatchId },
             data: {
@@ -412,7 +412,7 @@ export class AssetTransferBatchService {
           });
         return {
           message: 'Asset transaction confirmed successfully',
-          returnAssetTransaction,
+          returnAssetTransferBatch,
         };
       } else {
         throw new BadRequestException('Invalid transaction type');

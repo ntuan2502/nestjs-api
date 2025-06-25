@@ -16,7 +16,7 @@ import { SuppliersModule } from './suppliers/suppliers.module';
 import { BanksModule } from './banks/banks.module';
 import { AssetsModule } from './assets/assets.module';
 import { AssetTransactionsModule } from './asset-transactions/asset-transactions.module';
-import { AssetTransferBatchModule } from './asset-transfer-batch/asset-transfer-batch.module';
+import { AssetTransferBatchesModule } from './asset-transfer-batches/asset-transfer-batches.module';
 
 @Module({
   imports: [
@@ -35,7 +35,7 @@ import { AssetTransferBatchModule } from './asset-transfer-batch/asset-transfer-
     BanksModule,
     AssetsModule,
     AssetTransactionsModule,
-    AssetTransferBatchModule,
+    AssetTransferBatchesModule,
   ],
   controllers: [AppController],
   providers: [

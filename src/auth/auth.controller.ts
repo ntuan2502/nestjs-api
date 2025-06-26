@@ -114,15 +114,14 @@ export class AuthController {
   ): Promise<void> {
     const result = await this.authService.loginWithMicrosoft(req);
 
-    const frontendRedirectUrl = new URL(
-      this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000') +
-        '/auth/callback',
+    const frontendUrl = this.configService.get<string>(
+      'FRONTEND_URL',
+      'http://localhost:3000',
     );
+    const frontendRedirectUrl = new URL(frontendUrl + '/auth/callback');
     frontendRedirectUrl.searchParams.set('accessToken', result.accessToken);
     frontendRedirectUrl.searchParams.set('refreshToken', result.refreshToken);
-    frontendRedirectUrl.searchParams.set('id', result.user.id);
-    frontendRedirectUrl.searchParams.set('email', result.user.email);
-    frontendRedirectUrl.searchParams.set('name', result.user.name || '');
+    frontendRedirectUrl.searchParams.set('user', JSON.stringify(result.user));
 
     res.redirect(frontendRedirectUrl.toString());
   }

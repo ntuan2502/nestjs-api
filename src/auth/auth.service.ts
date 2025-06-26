@@ -23,6 +23,9 @@ import {
 import { getClientIp, parseLifetimeToDays } from 'src/common/utils/function';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { ADMIN_ID, DEFAULT_PASSWORD } from 'src/common/const';
+import * as fs from 'fs';
+import * as path from 'path';
+import axios from 'axios';
 
 @Injectable()
 export class AuthService {
@@ -31,6 +34,43 @@ export class AuthService {
     private readonly jwtService: JwtService,
     @Inject(ConfigService) private readonly configService: ConfigService,
   ) {}
+
+  private async fetchAndSaveMicrosoftAvatar(
+    accessToken: string,
+    name: string,
+  ): Promise<string | null> {
+    try {
+      // Fetch avatar từ Microsoft Graph API
+      const response = await axios.get(
+        'https://graph.microsoft.com/v1.0/me/photo/$value',
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          responseType: 'arraybuffer', // để nhận binary (ảnh)
+        },
+      );
+
+      // Tạo đường dẫn lưu ảnh
+      const filename = `${name.replace(/\s+/g, '_')}.png`; // tránh khoảng trắng
+      const avatarDir = path.join(process.cwd(), 'public', 'avatar');
+      const avatarPath = path.join(avatarDir, filename);
+
+      // Kiểm tra và tạo thư mục nếu chưa tồn tại
+      if (!fs.existsSync(avatarDir)) {
+        fs.mkdirSync(avatarDir, { recursive: true });
+      }
+
+      // Ghi file ra đĩa
+      fs.writeFileSync(avatarPath, Buffer.from(response.data), 'binary');
+
+      // Trả về đường dẫn tương đối có thể dùng ở FE
+      return `/public/avatar/${filename}`;
+    } catch (error) {
+      console.error('Không thể lấy hoặc lưu avatar:', error.message);
+      return null;
+    }
+  }
 
   private async validateUnique(email: string, exclude?: string) {
     const data = await this.prisma.user.findFirst({
@@ -359,6 +399,11 @@ export class AuthService {
     const data = req.user;
     const userAgent = req.headers['user-agent'];
     const email = data.profile.emails?.[0]?.value ?? '';
+    const msToken = data.accessToken;
+    const avatar = await this.fetchAndSaveMicrosoftAvatar(
+      msToken,
+      data.profile.displayName,
+    );
 
     const user = await this.prisma.user.findFirst({
       where: { email, deletedAt: null },
@@ -367,6 +412,15 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { avatar },
+      include: {
+        office: true,
+        department: true,
+      },
+    });
 
     const payload: JwtPayload = { sub: user.id, email: user.email };
     const accessToken = this.jwtService.sign(payload);
@@ -401,7 +455,7 @@ export class AuthService {
       message: 'Login successful',
       accessToken,
       refreshToken,
-      user: omitFields(user, ['password']),
+      user: omitFields(updatedUser, ['password']),
     };
   }
 }

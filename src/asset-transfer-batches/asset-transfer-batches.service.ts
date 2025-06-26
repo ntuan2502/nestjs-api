@@ -375,7 +375,9 @@ export class AssetTransferBatchesService {
         const fileName = `handover_${assetTransferBatch.assetTransactions[1].user?.name?.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${dayjs(assetTransferBatch.assetTransactions[1].signedAt).format('YYYY-MM-DD')}.pdf`;
         const outputPath = path.join(pdfDir, fileName);
         // Render PDF bằng Puppeteer
-        const browser = await puppeteer.launch();
+        const browser = await puppeteer.launch({
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        });
         const page = await browser.newPage();
         await page.setContent(html);
         await page.pdf({ path: outputPath, format: 'A4' });

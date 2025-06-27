@@ -6,6 +6,14 @@ export class CreateSupplierDto {
   name: string;
 
   @IsOptional()
+  @IsString({ message: 'internationalName must be a string' })
+  internationalName?: string;
+
+  @IsOptional()
+  @IsString({ message: 'shortName must be a string' })
+  shortName?: string;
+
+  @IsOptional()
   @IsString({ message: 'address must be a string' })
   address?: string;
 

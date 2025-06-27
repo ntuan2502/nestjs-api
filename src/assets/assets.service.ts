@@ -71,15 +71,11 @@ export class AssetsService {
         deviceType: true,
         deviceModel: true,
         assetTransactions: {
-          take: 1,
           orderBy: { createdAt: 'desc' },
           include: {
-            user: {
-              include: {
-                office: true,
-                department: true,
-              },
-            },
+            user: true,
+            office: true,
+            department: true,
           },
         },
       },

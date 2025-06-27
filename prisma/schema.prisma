@@ -325,10 +325,12 @@ model Supplier {
   id String @id @default(uuid())
 
   // Basic
-  name    String
-  address String?
-  taxCode String  @unique
-  phone   String?
+  name              String
+  internationalName String?
+  shortName         String?
+  address           String?
+  taxCode           String  @unique
+  phone             String?
 
   // Timestamps
   createdAt   DateTime @default(now())

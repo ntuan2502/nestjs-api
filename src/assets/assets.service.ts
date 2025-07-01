@@ -70,6 +70,7 @@ export class AssetsService {
         deletedBy: { select: { id: true, email: true, name: true } },
         deviceType: true,
         deviceModel: true,
+        supplier: true,
         assetTransactions: {
           orderBy: { createdAt: 'desc' },
           include: {
@@ -102,6 +103,7 @@ export class AssetsService {
         deletedBy: { select: { id: true, email: true, name: true } },
         deviceType: true,
         deviceModel: true,
+        supplier: true,
       },
     });
 
@@ -127,7 +129,8 @@ export class AssetsService {
       where: { id },
       data: {
         ...rest,
-        ...(internalCode ? { internalCode } : {}),
+        internalCode,
+        // ...(internalCode ? { internalCode } : {}),
         warranty: warranty ? Number(warranty) : undefined,
         updatedById: req.user.sub,
       },

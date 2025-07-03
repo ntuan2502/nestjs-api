@@ -3,6 +3,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { AssetTransactionsService } from './asset-transactions.service';
 import { AssetTransactionsController } from './asset-transactions.controller';
+import { MailService } from 'src/mail/mail.service';
 
 @Module({
   imports: [
@@ -17,6 +18,6 @@ import { AssetTransactionsController } from './asset-transactions.controller';
     }),
   ],
   controllers: [AssetTransactionsController],
-  providers: [AssetTransactionsService],
+  providers: [AssetTransactionsService, MailService],
 })
 export class AssetTransactionsModule {}

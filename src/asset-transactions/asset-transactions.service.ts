@@ -16,10 +16,14 @@ import {
   TransactionType,
 } from '@prisma/client';
 import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class AssetTransactionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   private async findActiveOrFail(id: string) {
     const data = await this.prisma.asset.findFirst({
@@ -236,39 +240,39 @@ export class AssetTransactionsService {
           );
         }
 
-        const handoverFromTransaction =
-          await this.prisma.assetTransaction.findFirst({
-            where: {
-              assetId: asset.id,
-              departmentId: department.id,
-              officeId: office.id,
-              type: TransactionType.TRANSFER,
-              direction: TransactionDirection.OUTGOING,
-              status: TransactionStatus.COMPLETED,
-            },
-            include: { user: true, asset: true },
-            orderBy: { createdAt: 'desc' },
-          });
+        // const handoverFromTransaction =
+        //   await this.prisma.assetTransaction.findFirst({
+        //     where: {
+        //       assetId: asset.id,
+        //       departmentId: department.id,
+        //       officeId: office.id,
+        //       type: TransactionType.TRANSFER,
+        //       direction: TransactionDirection.OUTGOING,
+        //       status: TransactionStatus.COMPLETED,
+        //     },
+        //     include: { user: true, asset: true },
+        //     orderBy: { createdAt: 'desc' },
+        //   });
 
-        const handoverToTransaction =
-          await this.prisma.assetTransaction.findFirst({
-            where: {
-              assetId: asset.id,
-              departmentId: department.id,
-              officeId: office.id,
-              type: TransactionType.TRANSFER,
-              direction: TransactionDirection.INCOMING,
-              status: TransactionStatus.COMPLETED,
-            },
-            include: { user: true, asset: true },
-            orderBy: { createdAt: 'desc' },
-          });
+        // const handoverToTransaction =
+        //   await this.prisma.assetTransaction.findFirst({
+        //     where: {
+        //       assetId: asset.id,
+        //       departmentId: department.id,
+        //       officeId: office.id,
+        //       type: TransactionType.TRANSFER,
+        //       direction: TransactionDirection.INCOMING,
+        //       status: TransactionStatus.COMPLETED,
+        //     },
+        //     include: { user: true, asset: true },
+        //     orderBy: { createdAt: 'desc' },
+        //   });
 
-        if (handoverFromTransaction && handoverToTransaction) {
-          throw new BadRequestException(
-            `Asset ${handoverFromTransaction.asset?.internalCode} already handed over from ${handoverFromTransaction.user?.name} to ${handoverToTransaction.user?.name}`,
-          );
-        }
+        // if (handoverFromTransaction && handoverToTransaction) {
+        //   throw new BadRequestException(
+        //     `Asset ${handoverFromTransaction.asset?.internalCode} already handed over from ${handoverFromTransaction.user?.name} to ${handoverToTransaction.user?.name}`,
+        //   );
+        // }
 
         if (relatedAssets && relatedAssets.length > 0) {
           for (let i = 0; i < relatedAssets.length; i++) {
@@ -322,6 +326,15 @@ export class AssetTransactionsService {
             status: TransactionStatus.COMPLETED,
             createdById: req.user.sub,
           },
+          include: {
+            asset: {
+              include: {
+                deviceModel: true,
+                deviceType: true,
+              },
+            },
+            user: true,
+          },
         });
 
         const confirmedAssetTransaction =
@@ -336,6 +349,17 @@ export class AssetTransactionsService {
               direction: TransactionDirection.INCOMING,
               status: TransactionStatus.PENDING,
               createdById: req.user.sub,
+            },
+            include: {
+              department: true,
+              office: true,
+              asset: {
+                include: {
+                  deviceModel: true,
+                  deviceType: true,
+                },
+              },
+              user: true,
             },
           });
 
@@ -372,6 +396,23 @@ export class AssetTransactionsService {
             });
           }
         }
+
+        await this.mailService.sendMail({
+          fromName: 'Amata IT Support',
+          to: 'ntuan.2502@gmail.com',
+          subject: 'Thông báo bàn giao tài sản / Asset Transfer Notification',
+          templateName: 'confirm-asset-transfer',
+          context: {
+            recipientName: confirmedAssetTransaction.user?.name,
+            officeName: confirmedAssetTransaction.office?.name,
+            departmentName: confirmedAssetTransaction.department?.name,
+            deviceType: assetTransaction.asset?.deviceType?.name,
+            deviceModel: assetTransaction.asset?.deviceModel?.name,
+            internalCode: assetTransaction.asset?.internalCode,
+            senderName: assetTransaction.user?.name,
+            confirmationLink: `${process.env.FRONTEND_URL}/asset-transfer-batches/confirm/${assetTransaction.assetTransferBatchId}?type=${TransactionType.TRANSFER}`,
+          },
+        });
 
         return {
           message: 'Asset transaction created successfully',

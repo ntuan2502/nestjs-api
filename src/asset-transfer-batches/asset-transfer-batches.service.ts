@@ -7,7 +7,12 @@ import { CreateAssetTransferBatchDto } from './dto/create-asset-transfer-batch.d
 import { UpdateAssetTransferBatchDto } from './dto/update-asset-transfer-batch.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
-import { Prisma, TransactionStatus, TransactionType } from '@prisma/client';
+import {
+  Prisma,
+  TransactionDirection,
+  TransactionStatus,
+  TransactionType,
+} from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as puppeteer from 'puppeteer';
@@ -304,7 +309,7 @@ export class AssetTransferBatchesService {
         const signToBase64 = fs.readFileSync(signToPath).toString('base64');
         const signToDataUrl = `data:image/png;base64,${signToBase64}`;
         const assetRows = assetTransferBatch.assetTransactions
-          .filter((tx) => tx.direction === 'OUTGOING')
+          .filter((tx) => tx.direction === TransactionDirection.INCOMING)
           .map((tx, index) => {
             return `
             <tr class="hover:bg-gray-50">

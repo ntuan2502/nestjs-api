@@ -162,7 +162,7 @@ model Office {
 
   // Basic
   name      String?
-  nameEn    String?
+  internationalName    String?
   shortName String?
   taxCode   String  @unique
   address   String?

@@ -75,7 +75,12 @@ export class UsersService {
         deletedBy: { select: { id: true, email: true, name: true } },
         department: { select: { id: true, name: true } },
         office: {
-          select: { id: true, name: true, nameEn: true, shortName: true },
+          select: {
+            id: true,
+            name: true,
+            internationalName: true,
+            shortName: true,
+          },
         },
       },
       orderBy: { name: 'asc' },
@@ -104,7 +109,12 @@ export class UsersService {
         deletedBy: { select: { id: true, email: true, name: true } },
         department: { select: { id: true, name: true } },
         office: {
-          select: { id: true, name: true, nameEn: true, shortName: true },
+          select: {
+            id: true,
+            name: true,
+            internationalName: true,
+            shortName: true,
+          },
         },
       },
     });

@@ -1,7 +1,7 @@
 export const offices = [
   {
     name: 'CÔNG TY CỔ PHẦN ĐÔ THỊ AMATA BIÊN HÒA',
-    nameEn: 'AMATA CITY BIENHOA JOINT STOCK COMPANY',
+    internationalName: 'AMATA CITY BIENHOA JOINT STOCK COMPANY',
     shortName: 'ACBH',
     taxCode: '3600265395',
     address:
@@ -9,7 +9,7 @@ export const offices = [
   },
   {
     name: 'CÔNG TY CỔ PHẦN ĐÔ THỊ AMATA HẠ LONG',
-    nameEn: 'AMATA CITY HA LONG JOINT STOCK COMPANY',
+    internationalName: 'AMATA CITY HA LONG JOINT STOCK COMPANY',
     shortName: 'ACHL',
     taxCode: '5701929293',
     address:
@@ -17,7 +17,7 @@ export const offices = [
   },
   {
     name: 'CÔNG TY CỔ PHẦN ĐÔ THỊ AMATA LONG THÀNH',
-    nameEn: 'AMATA CITY LONGTHANH JOINT STOCK COMPANY',
+    internationalName: 'AMATA CITY LONGTHANH JOINT STOCK COMPANY',
     shortName: 'ACLT',
     taxCode: '3603295006',
     address:
@@ -25,7 +25,7 @@ export const offices = [
   },
   {
     name: 'CÔNG TY TNHH THÀNH PHỐ AMATA LONG THÀNH',
-    nameEn: 'AMATA TOWNSHIP LONG THANH COMPANY LIMITED',
+    internationalName: 'AMATA TOWNSHIP LONG THANH COMPANY LIMITED',
     shortName: 'ATLT',
     taxCode: '3603404368',
     address:

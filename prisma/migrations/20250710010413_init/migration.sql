@@ -64,7 +64,7 @@ CREATE TABLE "Session" (
 CREATE TABLE "Office" (
     "id" TEXT NOT NULL,
     "name" TEXT,
-    "nameEn" TEXT,
+    "internationalName" TEXT,
     "shortName" TEXT,
     "taxCode" TEXT NOT NULL,
     "address" TEXT,
@@ -157,6 +157,8 @@ CREATE TABLE "BankAccount" (
 CREATE TABLE "Supplier" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "internationalName" TEXT,
+    "shortName" TEXT,
     "address" TEXT,
     "taxCode" TEXT NOT NULL,
     "phone" TEXT,
